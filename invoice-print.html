@@ -64,7 +64,7 @@
         .join("");
 
       return (
-        '<div class="invoice-sheet" id="invoiceSheet" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;">' +
+        '<div class="invoice-sheet" id="invoiceSheet" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;font-family:Calibri, Candara, Segoe UI, Optima, Arial, sans-serif;">' +
         '<div class="letterhead"><h1 style="color:#e00000;margin:0;font-size:1.55rem;text-transform:uppercase;font-weight:700;">' +
         window.UI.escapeHtml(profile.biller_name || "") +
         '</h1><div class="tagline" style="color:#e00000;font-size:0.82rem;margin-top:0.2rem;font-weight:600;text-transform:uppercase;">' +
@@ -195,6 +195,7 @@
               onclone: function (clonedDoc) {
                 var sheet = clonedDoc.getElementById("invoiceSheet");
                 if (!sheet) return;
+                sheet.style.fontFamily = "Calibri, Candara, Segoe UI, Optima, Arial, sans-serif";
                 sheet.style.webkitPrintColorAdjust = "exact";
                 sheet.style.printColorAdjust = "exact";
                 sheet.querySelectorAll(".section-label").forEach(function (node) {
@@ -207,6 +208,9 @@
                 });
                 sheet.querySelectorAll(".letterhead h1, .letterhead .tagline, .grand").forEach(function (node) {
                   node.style.color = "#e00000";
+                });
+                sheet.querySelectorAll("*").forEach(function (node) {
+                  node.style.fontFamily = "Calibri, Candara, Segoe UI, Optima, Arial, sans-serif";
                 });
               }
             },
