@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Report · Invoice App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="assets/css/styles.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="pageRoot">
+    <div class="no-print d-flex flex-wrap gap-2 mb-3">
+      <a class="btn btn-outline-secondary" href="invoices.html">← Back</a>
+      <a class="btn btn-outline-brand" id="btnEdit" href="#">Edit bill</a>
+      <button type="button" class="btn btn-brand" id="btnPrint">Print</button>
+      <button type="button" class="btn btn-outline-brand" id="btnPdf">Download PDF</button>
+    </div>
+    <div id="reportHost"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/db.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    function nl2br(text) {
+      return window.UI.escapeHtml(text || "").replace(/\n/g, "<br>");
+    }
+
+    function renderReport(data) {
+      var H = window.DB.helpers;
+      var inv = data.invoice;
+      var client = data.client || {};
+      var profile = data.profile || {};
+      var items = data.items || [];
+      var title = inv.doc_type === "quotation" ? "QUOTATION" : "TAX INVOICE";
+
+      var rows = items
+        .map(function (li, idx) {
+          return (
+            "<tr><td>" +
+            (idx + 1) +
+            "</td><td>" +
+            nl2br(li.item_name) +
+            "</td><td>" +
+            window.UI.escapeHtml(li.type_name || "") +
+            '</td><td class="num">' +
+            H.formatMoney(li.quantity) +
+            '</td><td class="num">' +
+            H.formatMoney(li.rate) +
+            '</td><td class="num">' +
+            H.formatMoney(li.line_total) +
+            "</td></tr>"
+          );
+        })
+        .join("");
+
+      return (
+        '<div class="invoice-sheet" id="invoiceSheet">' +
+        '<div class="letterhead"><h1>' +
+        window.UI.escapeHtml(profile.biller_name || "") +
+        '</h1><div class="tagline">' +
+        window.UI.escapeHtml(profile.tagline || "") +
+        "</div></div>" +
+        '<div class="doc-title">' +
+        title +
+        "</div>" +
+        '<div class="meta-grid">' +
+        "<div><strong>TO</strong><br><strong>" +
+        window.UI.escapeHtml(client.client_name || "") +
+        "</strong><br>" +
+        nl2br(client.address || "") +
+        "<br>GSTIN:" +
+        window.UI.escapeHtml(client.gst_no || "") +
+        "<br>PAN:" +
+        window.UI.escapeHtml(client.pan_no || "") +
+        "<br>SAC code - " +
+        window.UI.escapeHtml(inv.sac_code || "") +
+        "</div>" +
+        '<div style="text-align:right"><div><strong>BillNo :</strong> ' +
+        (inv.bill_number || 0) +
+        "</div><div><strong>Date :</strong> " +
+        H.formatDate(inv.invoice_date) +
+        "</div><div style='margin-top:0.75rem;text-align:left;display:inline-block'><strong>Address</strong><br>" +
+        nl2br(profile.address || "") +
+        "<br>GSTIN:" +
+        window.UI.escapeHtml(profile.gst_no || "") +
+        "<br>Mob:" +
+        window.UI.escapeHtml(profile.phone || "") +
+        "<br>Email:" +
+        window.UI.escapeHtml(profile.email || "") +
+        "<br>PAN:" +
+        window.UI.escapeHtml(profile.pan_no || "") +
+        "</div></div></div>" +
+        "<table><thead><tr><th>No</th><th>Item Name</th><th>Type Name</th><th>Quantity</th><th>Rate</th><th>Total</th></tr></thead><tbody>" +
+        rows +
+        "</tbody></table>" +
+        '<div class="totals">' +
+        "<div><span>SubTotal</span><span>: " +
+        H.formatMoney(inv.sub_total) +
+        "</span></div>" +
+        "<div><span>CGST " +
+        Number(inv.cgst_pct || 0).toFixed(2) +
+        " %</span><span>: " +
+        H.formatMoney(inv.cgst) +
+        "</span></div>" +
+        "<div><span>SGST " +
+        Number(inv.sgst_pct || 0).toFixed(2) +
+        " %</span><span>: " +
+        H.formatMoney(inv.sgst) +
+        "</span></div>" +
+        "<div><span>IGST " +
+        Number(inv.igst_pct || 0).toFixed(2) +
+        " %</span><span>: " +
+        H.formatMoney(inv.igst) +
+        "</span></div>" +
+        "<div><strong>TOTAL</strong><strong>: " +
+        H.formatMoney(inv.total) +
+        "</strong></div></div>" +
+        '<div class="footer-note">Note: Certified that the particulars given above are true and correct</div>' +
+        '<div class="sign-bank"><div><strong>BANK DETAILS</strong><br>Bank Name : ' +
+        window.UI.escapeHtml(profile.bank_name || "") +
+        "<br>Account no : " +
+        window.UI.escapeHtml(profile.account_no || "") +
+        "<br>IFSC Code : " +
+        window.UI.escapeHtml(profile.ifsc_code || "") +
+        "<br>Branch : " +
+        window.UI.escapeHtml(profile.branch || "") +
+        '</div><div class="sign">For ' +
+        window.UI.escapeHtml(profile.proprietor_name || profile.biller_name || "") +
+        "<br><br><br>Proprietor</div></div></div>"
+      );
+    }
+
+    $(async function () {
+      var session = await window.UI.bootPage("invoices.html");
+      if (!session) return;
+      var id = new URLSearchParams(window.location.search).get("id");
+      if (!id) {
+        $("#reportHost").html('<div class="alert alert-warning">Missing bill id.</div>');
+        return;
+      }
+      $("#btnEdit").attr("href", "create-invoice.html?id=" + encodeURIComponent(id));
+      var data = await window.DB.getInvoice(id);
+      if (!data) {
+        $("#reportHost").html('<div class="alert alert-danger">Bill not found.</div>');
+        return;
+      }
+      $("#reportHost").html(renderReport(data));
+
+      $("#btnPrint").on("click", function () {
+        window.print();
+      });
+
+      $("#btnPdf").on("click", function () {
+        var el = document.getElementById("invoiceSheet");
+        var name =
+          (data.invoice.doc_type === "quotation" ? "Quotation" : "TaxInvoice") +
+          "_" +
+          (data.invoice.bill_number || 0) +
+          ".pdf";
+        html2pdf()
+          .set({
+            margin: 8,
+            filename: name,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+          })
+          .from(el)
+          .save();
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create Invoice · Invoice App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="assets/css/styles.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="pageRoot">
+    <h1 class="page-title" id="pageHeading">Create quotation / invoice</h1>
+    <p class="page-sub">Add line items with SFT / RFT / Other. GST (CGST/SGST/IGST) calculates automatically.</p>
+
+    <form id="invoiceForm">
+      <div class="card-panel">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Document type</label>
+            <select class="form-select" id="doc_type">
+              <option value="quotation">Quotation</option>
+              <option value="tax_invoice">Tax Invoice</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Bill number</label>
+            <input class="form-control" type="number" inputmode="numeric" id="bill_number" min="0" />
+            <div class="form-text">0 for quotations. Auto-filled for tax invoices.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Date</label>
+            <input class="form-control" type="date" id="invoice_date" required />
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Client *</label>
+            <select class="form-select" id="client_id" required></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">GST %</label>
+            <input class="form-control" type="number" inputmode="decimal" id="gst_rate" step="0.01" min="0" value="18" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">SAC code</label>
+            <input class="form-control" id="sac_code" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <h2 class="h5 mb-3">Line items</h2>
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-md-4">
+            <label class="form-label">Item</label>
+            <select class="form-select" id="pick_item"></select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Type</label>
+            <select class="form-select" id="pick_type">
+              <option value="SFT">SFT</option>
+              <option value="RFT">RFT</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Qty</label>
+            <input class="form-control" type="number" inputmode="decimal" step="0.01" min="0" id="pick_qty" value="1" />
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label">Rate</label>
+            <input class="form-control" type="number" inputmode="decimal" step="0.01" min="0" id="pick_rate" />
+          </div>
+          <div class="col-6 col-md-2">
+            <button type="button" class="btn btn-brand w-100" id="btnAddLine">Add</button>
+          </div>
+        </div>
+        <div id="linesHost"></div>
+      </div>
+
+      <div class="card-panel">
+        <div class="totals-box" id="totalsBox"></div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="submit" class="btn btn-brand" id="btnSave">Save</button>
+          <a class="btn btn-outline-secondary" href="invoices.html">Cancel</a>
+          <a class="btn btn-outline-brand d-none" id="btnOpenReport" href="#">Open report</a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/db.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    $(async function () {
+      var session = await window.UI.bootPage("create-invoice.html");
+      if (!session) return;
+      var H = window.DB.helpers;
+      var editId = new URLSearchParams(window.location.search).get("id");
+      var lines = [];
+      var profile = null;
+      var clients = [];
+      var items = [];
+
+      profile = await window.DB.getProfile();
+      clients = await window.DB.listClients();
+      items = await window.DB.listItems();
+
+      $("#invoice_date").val(H.todayISO());
+      $("#gst_rate").val(window.APP_CONFIG.DEFAULT_GST_RATE || 18);
+
+      $("#client_id").html(
+        '<option value="">Select client</option>' +
+          clients.map(function (c) {
+            return '<option value="' + c.id + '">' + window.UI.escapeHtml(c.client_name) + "</option>";
+          }).join("")
+      );
+      $("#pick_item").html(
+        '<option value="">Select item</option>' +
+          items.map(function (i) {
+            return (
+              '<option value="' +
+              i.id +
+              '" data-rate="' +
+              i.rate +
+              '">' +
+              window.UI.escapeHtml(i.item_name) +
+              "</option>"
+            );
+          }).join("")
+      );
+
+      if (!editId) {
+        var next = await window.DB.nextBillNumber();
+        $("#bill_number").val(0);
+        $("#doc_type").val("quotation");
+        $("#doc_type").on("change", async function () {
+          if ($(this).val() === "tax_invoice") {
+            $("#bill_number").val(await window.DB.nextBillNumber());
+          } else {
+            $("#bill_number").val(0);
+          }
+        });
+      } else {
+        $("#pageHeading").text("Edit bill");
+        var data = await window.DB.getInvoice(editId);
+        if (!data) {
+          window.UI.toast("Bill not found", "error");
+          return;
+        }
+        var inv = data.invoice;
+        $("#doc_type").val(inv.doc_type);
+        $("#bill_number").val(inv.bill_number);
+        $("#invoice_date").val(String(inv.invoice_date).slice(0, 10));
+        $("#client_id").val(inv.client_id);
+        $("#gst_rate").val(inv.gst_rate);
+        $("#sac_code").val(inv.sac_code || "");
+        lines = (data.items || []).map(function (li) {
+          return {
+            item_id: li.item_id,
+            item_name: li.item_name,
+            type_name: li.type_name,
+            quantity: Number(li.quantity),
+            rate: Number(li.rate)
+          };
+        });
+        $("#btnOpenReport")
+          .removeClass("d-none")
+          .attr("href", "invoice-print.html?id=" + encodeURIComponent(editId));
+      }
+
+      function selectedClient() {
+        var id = $("#client_id").val();
+        return clients.find(function (c) { return c.id === id; }) || null;
+      }
+
+      function recalc() {
+        var client = selectedClient();
+        var sameState =
+          !!profile &&
+          !!client &&
+          String(profile.state_code || "") === String(client.state_code || "");
+        var sub = 0;
+        lines.forEach(function (li) {
+          sub += H.money(Number(li.quantity) * Number(li.rate));
+        });
+        var gst = H.computeGst(sub, $("#gst_rate").val(), sameState);
+        $("#totalsBox").html(
+          '<div class="row-line"><span>SubTotal</span><span>₹' + H.formatMoney(gst.sub_total) + "</span></div>" +
+            '<div class="row-line"><span>CGST ' + gst.cgst_pct.toFixed(2) + " %</span><span>₹" + H.formatMoney(gst.cgst) + "</span></div>" +
+            '<div class="row-line"><span>SGST ' + gst.sgst_pct.toFixed(2) + " %</span><span>₹" + H.formatMoney(gst.sgst) + "</span></div>" +
+            '<div class="row-line"><span>IGST ' + gst.igst_pct.toFixed(2) + " %</span><span>₹" + H.formatMoney(gst.igst) + "</span></div>" +
+            '<div class="row-line grand"><span>TOTAL</span><span>₹' + H.formatMoney(gst.total) + "</span></div>"
+        );
+        return gst;
+      }
+
+      function renderLines() {
+        if (!lines.length) {
+          $("#linesHost").html('<div class="text-muted">No line items yet. Add an item above.</div>');
+          recalc();
+          return;
+        }
+        $("#linesHost").html(
+          lines
+            .map(function (li, idx) {
+              return (
+                '<div class="line-item-card"><div class="d-flex justify-content-between gap-2"><strong>' +
+                window.UI.escapeHtml(li.item_name) +
+                '</strong><button type="button" class="btn btn-sm btn-outline-danger btn-remove" data-idx="' +
+                idx +
+                '">Remove</button></div><div class="meta mt-1">' +
+                window.UI.escapeHtml(li.type_name) +
+                " · Qty " +
+                li.quantity +
+                " · Rate ₹" +
+                H.formatMoney(li.rate) +
+                " · Total ₹" +
+                H.formatMoney(Number(li.quantity) * Number(li.rate)) +
+                "</div></div>"
+              );
+            })
+            .join("")
+        );
+        recalc();
+      }
+
+      $("#pick_item").on("change", function () {
+        var opt = $(this).find(":selected");
+        var rate = opt.data("rate");
+        if (rate != null) $("#pick_rate").val(rate);
+      });
+
+      $("#btnAddLine").on("click", function () {
+        var itemId = $("#pick_item").val();
+        var item = items.find(function (i) { return i.id === itemId; });
+        var qty = Number($("#pick_qty").val());
+        var rate = Number($("#pick_rate").val());
+        if (!item) {
+          window.UI.toast("Select an item", "error");
+          return;
+        }
+        if (!(qty > 0) || !(rate >= 0)) {
+          window.UI.toast("Enter valid quantity and rate", "error");
+          return;
+        }
+        lines.push({
+          item_id: item.id,
+          item_name: item.item_name,
+          type_name: $("#pick_type").val(),
+          quantity: qty,
+          rate: rate
+        });
+        $("#pick_qty").val(1);
+        renderLines();
+      });
+
+      $(document).on("click", ".btn-remove", function () {
+        lines.splice(Number($(this).data("idx")), 1);
+        renderLines();
+      });
+
+      $("#client_id, #gst_rate").on("change input", recalc);
+
+      $("#invoiceForm").on("submit", async function (e) {
+        e.preventDefault();
+        try {
+          var saved = await window.DB.saveInvoice({
+            id: editId || undefined,
+            doc_type: $("#doc_type").val(),
+            bill_number: Number($("#bill_number").val()),
+            client_id: $("#client_id").val(),
+            invoice_date: $("#invoice_date").val(),
+            sac_code: $("#sac_code").val().trim(),
+            gst_rate: Number($("#gst_rate").val()),
+            items: lines
+          });
+          window.UI.toast(editId ? "Bill updated" : "Bill saved", "success");
+          window.location.href = "invoice-print.html?id=" + encodeURIComponent(saved.id);
+        } catch (err) {
+          window.UI.toast(err.message || "Save failed", "error");
+        }
+      });
+
+      renderLines();
+    });
+  </script>
+</body>
+</html>
