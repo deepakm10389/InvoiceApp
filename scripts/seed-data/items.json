@@ -1,0 +1,230 @@
+[
+  {
+    "legacy_item_id": "1",
+    "item_name": "Matt Polish",
+    "rate": 70.0,
+    "description": "Matt Polish"
+  },
+  {
+    "legacy_item_id": "2",
+    "item_name": "White Matt Polish",
+    "rate": 75.0,
+    "description": "White Matt Polish"
+  },
+  {
+    "legacy_item_id": "3",
+    "item_name": "Hand Polish",
+    "rate": 30.0,
+    "description": "Hand Polish"
+  },
+  {
+    "legacy_item_id": "4",
+    "item_name": "Zinc Polish",
+    "rate": 35.0,
+    "description": "Zinc Polish"
+  },
+  {
+    "legacy_item_id": "5",
+    "item_name": "PU Inside",
+    "rate": 170.0,
+    "description": "PU Inside"
+  },
+  {
+    "legacy_item_id": "6",
+    "item_name": "PU Outside",
+    "rate": 180.0,
+    "description": "PU Outside"
+  },
+  {
+    "legacy_item_id": "7",
+    "item_name": "PU Paint",
+    "rate": 235.0,
+    "description": "PU Paint"
+  },
+  {
+    "legacy_item_id": "8",
+    "item_name": "Lamination color",
+    "rate": 400.0,
+    "description": "Lamination color"
+  },
+  {
+    "legacy_item_id": "9",
+    "item_name": "Deco PU Deco",
+    "rate": 245.0,
+    "description": "Deco PU Deco"
+  },
+  {
+    "legacy_item_id": "10",
+    "item_name": "Deco color",
+    "rate": 140.0,
+    "description": "Deco color"
+  },
+  {
+    "legacy_item_id": "11",
+    "item_name": "Design texture",
+    "rate": 70.0,
+    "description": "Design texture"
+  },
+  {
+    "legacy_item_id": "12",
+    "item_name": "Texture",
+    "rate": 65.0,
+    "description": "Texture"
+  },
+  {
+    "legacy_item_id": "13",
+    "item_name": "Water Cutting Paint",
+    "rate": 120.0,
+    "description": "Water Cutting Paint"
+  },
+  {
+    "legacy_item_id": "14",
+    "item_name": "Luster Paint",
+    "rate": 40.0,
+    "description": "Luster Paint"
+  },
+  {
+    "legacy_item_id": "15",
+    "item_name": "Water Luster Paint",
+    "rate": 45.0,
+    "description": "Water Luster Paint"
+  },
+  {
+    "legacy_item_id": "16",
+    "item_name": "Plastic Paint",
+    "rate": 35.0,
+    "description": "Plastic Paint"
+  },
+  {
+    "legacy_item_id": "17",
+    "item_name": "Royal touch",
+    "rate": 45.0,
+    "description": "Royal touch"
+  },
+  {
+    "legacy_item_id": "18",
+    "item_name": "Velvet paint",
+    "rate": 48.0,
+    "description": "Velvet paint"
+  },
+  {
+    "legacy_item_id": "19",
+    "item_name": "Apex paint Inside",
+    "rate": 35.0,
+    "description": "Apex paint Inside"
+  },
+  {
+    "legacy_item_id": "20",
+    "item_name": "Apex paint Outside",
+    "rate": 40.0,
+    "description": "Apex paint Outside"
+  },
+  {
+    "legacy_item_id": "21",
+    "item_name": "Summotion Outside",
+    "rate": 20.0,
+    "description": "Summotion Outside"
+  },
+  {
+    "legacy_item_id": "22",
+    "item_name": "Distemper Acrylic",
+    "rate": 20.0,
+    "description": "Distemper Acrylic"
+  },
+  {
+    "legacy_item_id": "23",
+    "item_name": "Distemper",
+    "rate": 17.0,
+    "description": "Distemper"
+  },
+  {
+    "legacy_item_id": "24",
+    "item_name": "Oil Paint",
+    "rate": 35.0,
+    "description": "Oil Paint"
+  },
+  {
+    "legacy_item_id": "25",
+    "item_name": "White wash",
+    "rate": 10.0,
+    "description": "White wash"
+  },
+  {
+    "legacy_item_id": "26",
+    "item_name": "White cement",
+    "rate": 20.0,
+    "description": "White cement"
+  },
+  {
+    "legacy_item_id": "27",
+    "item_name": "Lisid Oil",
+    "rate": 65.0,
+    "description": "Lisid Oil"
+  },
+  {
+    "legacy_item_id": "28",
+    "item_name": "Crack paint",
+    "rate": 130.0,
+    "description": "Crack paint"
+  },
+  {
+    "legacy_item_id": "29",
+    "item_name": "Ceiling wall painting",
+    "rate": 25.0,
+    "description": "Ceiling wall painting"
+  },
+  {
+    "legacy_item_id": "30",
+    "item_name": "Other",
+    "rate": 0.0,
+    "description": "Other"
+  },
+  {
+    "legacy_item_id": "31",
+    "item_name": "Water PU",
+    "rate": 140.0,
+    "description": "Water PU"
+  },
+  {
+    "legacy_item_id": "32",
+    "item_name": "Covering and Cleaning",
+    "rate": 1.0,
+    "description": "Covering and Cleaning"
+  },
+  {
+    "legacy_item_id": "33",
+    "item_name": "PU Polish",
+    "rate": 170.0,
+    "description": "PU Polish"
+  },
+  {
+    "legacy_item_id": "34",
+    "item_name": "Extra work",
+    "rate": 1.0,
+    "description": "Extra work"
+  },
+  {
+    "legacy_item_id": "35",
+    "item_name": "Loose Furniture",
+    "rate": 1.0,
+    "description": "Loose Furniture"
+  },
+  {
+    "legacy_item_id": "36",
+    "item_name": "PU Paint dark colour",
+    "rate": 1.0,
+    "description": "PU Paint dark colour"
+  },
+  {
+    "legacy_item_id": "37",
+    "item_name": "Lamination dark colour",
+    "rate": 1.0,
+    "description": "Lamination dark colour"
+  },
+  {
+    "legacy_item_id": "38",
+    "item_name": "Dark paint colour",
+    "rate": 1.0,
+    "description": "Dark paint colour"
+  }
+]

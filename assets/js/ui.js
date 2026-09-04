@@ -5,11 +5,12 @@
   "use strict";
 
   var NAV = [
-    { href: "dashboard.html", label: "Dashboard" },
+      { href: "dashboard.html", label: "Dashboard" },
     { href: "create-invoice.html", label: "Create Invoice" },
     { href: "invoices.html", label: "All Bills" },
     { href: "clients.html", label: "Clients" },
     { href: "items.html", label: "Items" },
+    { href: "import-masters.html", label: "Import masters" },
     { href: "profile.html", label: "Profile" }
   ];
 
