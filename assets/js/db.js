@@ -227,6 +227,78 @@
     else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }
 
+  function buildDashboard(invoices, clients, items, profile) {
+    invoices = invoices || [];
+    clients = clients || [];
+    items = items || [];
+    var quotations = invoices.filter(function (i) {
+      return i.doc_type === "quotation";
+    });
+    var taxInvoices = invoices.filter(function (i) {
+      return i.doc_type !== "quotation";
+    });
+    function sumField(list, field) {
+      return money(
+        list.reduce(function (s, i) {
+          return s + Number(i[field] || 0);
+        }, 0)
+      );
+    }
+    var now = new Date();
+    var monthPrefix =
+      now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+    var thisMonth = invoices.filter(function (i) {
+      return String(i.invoice_date || "").slice(0, 7) === monthPrefix;
+    });
+    var clientTotals = {};
+    invoices.forEach(function (inv) {
+      var key = inv.client_id || inv.client_name || "unknown";
+      if (!clientTotals[key]) {
+        clientTotals[key] = {
+          client_id: inv.client_id,
+          client_name: inv.client_name || "Unknown",
+          count: 0,
+          total: 0
+        };
+      }
+      clientTotals[key].count += 1;
+      clientTotals[key].total = money(clientTotals[key].total + Number(inv.total || 0));
+    });
+    var topClients = Object.keys(clientTotals)
+      .map(function (k) {
+        return clientTotals[k];
+      })
+      .sort(function (a, b) {
+        return b.total - a.total;
+      })
+      .slice(0, 5);
+
+    return {
+      invoiceCount: invoices.length,
+      quotationCount: quotations.length,
+      taxInvoiceCount: taxInvoices.length,
+      clientCount: clients.length,
+      itemCount: items.length,
+      revenue: sumField(taxInvoices, "total"),
+      quotationValue: sumField(quotations, "total"),
+      billValue: sumField(invoices, "total"),
+      cgstTotal: sumField(invoices, "cgst"),
+      sgstTotal: sumField(invoices, "sgst"),
+      igstTotal: sumField(invoices, "igst"),
+      gstTotal: money(
+        sumField(invoices, "cgst") + sumField(invoices, "sgst") + sumField(invoices, "igst")
+      ),
+      thisMonthCount: thisMonth.length,
+      thisMonthValue: sumField(thisMonth, "total"),
+      thisMonthLabel: now.toLocaleString("en-IN", { month: "long", year: "numeric" }),
+      topClients: topClients,
+      recent: invoices.slice(0, 8),
+      profile: profile || null,
+      clients: clients.slice(0, 5),
+      items: items.slice(0, 5)
+    };
+  }
+
   /* ---------- Local backend ---------- */
   var LocalDB = {
     mode: "demo",
@@ -538,16 +610,8 @@
       var invoices = await this.listInvoices();
       var clients = await this.listClients();
       var items = await this.listItems();
-      var revenue = invoices.reduce(function (sum, i) {
-        return sum + Number(i.total || 0);
-      }, 0);
-      return {
-        invoiceCount: invoices.length,
-        clientCount: clients.length,
-        itemCount: items.length,
-        revenue: money(revenue),
-        recent: invoices.slice(0, 5)
-      };
+      var profile = await this.getProfile();
+      return buildDashboard(invoices, clients, items, profile);
     }
   };
 
@@ -792,16 +856,8 @@
         var invoices = await this.listInvoices();
         var clients = await this.listClients();
         var items = await this.listItems();
-        var revenue = invoices.reduce(function (sum, i) {
-          return sum + Number(i.total || 0);
-        }, 0);
-        return {
-          invoiceCount: invoices.length,
-          clientCount: clients.length,
-          itemCount: items.length,
-          revenue: money(revenue),
-          recent: invoices.slice(0, 5)
-        };
+        var profile = await this.getProfile();
+        return buildDashboard(invoices, clients, items, profile);
       }
     };
   }

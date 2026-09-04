@@ -9,22 +9,102 @@
 </head>
 <body>
   <div id="pageRoot">
-    <h1 class="page-title">Dashboard</h1>
-    <p class="page-sub">Overview of your quotations and tax invoices.</p>
-    <div class="stat-grid mb-3" id="stats"></div>
-    <div class="d-flex flex-wrap gap-2 mb-3">
-      <a class="btn btn-brand" href="create-invoice.html">+ New quotation / invoice</a>
-      <a class="btn btn-outline-brand" href="invoices.html">View all bills</a>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub mb-0" id="welcomeLine">Overview of quotations, tax invoices, GST and masters.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-brand" href="create-invoice.html">+ New bill</a>
+        <a class="btn btn-outline-brand" href="invoices.html">All bills</a>
+      </div>
     </div>
+
+    <div class="stat-grid mb-3" id="stats"></div>
+
+    <div class="dash-grid mb-3">
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">This month</h2>
+        <div id="monthBox"></div>
+      </div>
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">GST overview</h2>
+        <div id="gstBox"></div>
+      </div>
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">Document mix</h2>
+        <div id="mixBox"></div>
+      </div>
+    </div>
+
+    <div class="dash-grid mb-3">
+      <div class="card-panel mb-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Top clients</h2>
+          <a class="small" href="clients.html">Manage</a>
+        </div>
+        <div id="topClientsBox"></div>
+      </div>
+      <div class="card-panel mb-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Biller profile</h2>
+          <a class="small" href="profile.html">Edit</a>
+        </div>
+        <div id="profileBox"></div>
+      </div>
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">Quick links</h2>
+        <div class="d-grid gap-2">
+          <a class="btn btn-outline-brand text-start" href="create-invoice.html">Create quotation / invoice</a>
+          <a class="btn btn-outline-brand text-start" href="invoices.html">Filter &amp; edit bills</a>
+          <a class="btn btn-outline-brand text-start" href="clients.html">Clients master</a>
+          <a class="btn btn-outline-brand text-start" href="items.html">Items master</a>
+          <a class="btn btn-outline-brand text-start" href="profile.html">Letterhead &amp; bank details</a>
+        </div>
+      </div>
+    </div>
+
     <div class="card-panel">
-      <h2 class="h5 mb-3">Recent bills</h2>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="h5 mb-0">Recent bills</h2>
+        <a class="small" href="invoices.html">View all</a>
+      </div>
       <div class="table-wrap desktop-table">
         <table class="table table-sm align-middle mb-0">
-          <thead><tr><th>#</th><th>Bill No</th><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Bill No</th>
+              <th>Type</th>
+              <th>Client</th>
+              <th>Date</th>
+              <th class="text-end">SubTotal</th>
+              <th class="text-end">GST</th>
+              <th class="text-end">Total</th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody id="recentTable"></tbody>
         </table>
       </div>
       <div class="mobile-cards" id="recentCards"></div>
+    </div>
+
+    <div class="dash-grid mt-3">
+      <div class="card-panel mb-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Clients snapshot</h2>
+          <a class="small" href="clients.html">All clients</a>
+        </div>
+        <div id="clientsSnap"></div>
+      </div>
+      <div class="card-panel mb-0">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Items snapshot</h2>
+          <a class="small" href="items.html">All items</a>
+        </div>
+        <div id="itemsSnap"></div>
+      </div>
     </div>
   </div>
 
@@ -36,37 +116,210 @@
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/ui.js"></script>
   <script>
+    function typeLabel(t) {
+      return t === "quotation" ? "Quotation" : "Tax Invoice";
+    }
+
+    function detailRow(label, value) {
+      return (
+        '<div class="dash-detail-row"><span>' +
+        window.UI.escapeHtml(label) +
+        '</span><strong>' +
+        value +
+        "</strong></div>"
+      );
+    }
+
     $(async function () {
       var session = await window.UI.bootPage("dashboard.html");
       if (!session) return;
       var H = window.DB.helpers;
       var data = await window.DB.getDashboard();
-      $("#stats").html(
-        '<div class="stat-card"><div class="label">Bills</div><div class="value">' + data.invoiceCount + '</div></div>' +
-        '<div class="stat-card"><div class="label">Revenue</div><div class="value">₹' + H.formatMoney(data.revenue) + '</div></div>' +
-        '<div class="stat-card"><div class="label">Clients</div><div class="value">' + data.clientCount + '</div></div>' +
-        '<div class="stat-card"><div class="label">Items</div><div class="value">' + data.itemCount + '</div></div>'
+      var profile = data.profile || {};
+
+      $("#welcomeLine").text(
+        (profile.biller_name ? profile.biller_name + " — " : "") +
+          "overview of quotations, tax invoices, GST and masters."
       );
+
+      $("#stats").html(
+        '<div class="stat-card"><div class="label">Total bills</div><div class="value">' +
+          data.invoiceCount +
+          '</div></div>' +
+          '<div class="stat-card"><div class="label">Tax invoice revenue</div><div class="value">₹' +
+          H.formatMoney(data.revenue) +
+          '</div></div>' +
+          '<div class="stat-card"><div class="label">Clients</div><div class="value">' +
+          data.clientCount +
+          '</div></div>' +
+          '<div class="stat-card"><div class="label">Items</div><div class="value">' +
+          data.itemCount +
+          "</div></div>"
+      );
+
+      $("#monthBox").html(
+        detailRow("Period", window.UI.escapeHtml(data.thisMonthLabel || "")) +
+          detailRow("Bills this month", String(data.thisMonthCount || 0)) +
+          detailRow("Value this month", "₹" + H.formatMoney(data.thisMonthValue || 0)) +
+          detailRow("All-time bill value", "₹" + H.formatMoney(data.billValue || 0))
+      );
+
+      $("#gstBox").html(
+        detailRow("CGST", "₹" + H.formatMoney(data.cgstTotal || 0)) +
+          detailRow("SGST", "₹" + H.formatMoney(data.sgstTotal || 0)) +
+          detailRow("IGST", "₹" + H.formatMoney(data.igstTotal || 0)) +
+          detailRow("Total GST", "₹" + H.formatMoney(data.gstTotal || 0))
+      );
+
+      $("#mixBox").html(
+        detailRow("Quotations", String(data.quotationCount || 0)) +
+          detailRow("Quotation value", "₹" + H.formatMoney(data.quotationValue || 0)) +
+          detailRow("Tax invoices", String(data.taxInvoiceCount || 0)) +
+          detailRow("Tax invoice revenue", "₹" + H.formatMoney(data.revenue || 0))
+      );
+
+      if (!data.topClients || !data.topClients.length) {
+        $("#topClientsBox").html('<div class="text-muted">No client billings yet.</div>');
+      } else {
+        $("#topClientsBox").html(
+          data.topClients
+            .map(function (c, idx) {
+              return (
+                '<div class="dash-detail-row"><span>#' +
+                (idx + 1) +
+                " " +
+                window.UI.escapeHtml(c.client_name) +
+                ' <span class="text-muted">(' +
+                c.count +
+                " bills)</span></span><strong>₹" +
+                H.formatMoney(c.total) +
+                "</strong></div>"
+              );
+            })
+            .join("")
+        );
+      }
+
+      $("#profileBox").html(
+        detailRow("Biller", window.UI.escapeHtml(profile.biller_name || "—")) +
+          detailRow("GSTIN", window.UI.escapeHtml(profile.gst_no || "—")) +
+          detailRow("State code", window.UI.escapeHtml(profile.state_code || "—")) +
+          detailRow("Mobile", window.UI.escapeHtml(profile.phone || "—")) +
+          detailRow("Bank", window.UI.escapeHtml(profile.bank_name || "—"))
+      );
+
       var rows = data.recent || [];
       if (!rows.length) {
-        $("#recentTable").html('<tr><td colspan="7" class="text-muted">No bills yet. Create your first quotation or invoice.</td></tr>');
+        $("#recentTable").html(
+          '<tr><td colspan="9" class="text-muted">No bills yet. Create your first quotation or invoice.</td></tr>'
+        );
         $("#recentCards").html('<div class="text-muted">No bills yet.</div>');
-        return;
+      } else {
+        $("#recentTable").html(
+          rows
+            .map(function (r, idx) {
+              var gst = H.money(Number(r.cgst || 0) + Number(r.sgst || 0) + Number(r.igst || 0));
+              return (
+                "<tr><td>" +
+                (idx + 1) +
+                "</td><td>" +
+                (r.bill_number || 0) +
+                "</td><td>" +
+                typeLabel(r.doc_type) +
+                "</td><td>" +
+                window.UI.escapeHtml(r.client_name || "") +
+                "</td><td>" +
+                H.formatDate(r.invoice_date) +
+                '</td><td class="text-end">₹' +
+                H.formatMoney(r.sub_total) +
+                '</td><td class="text-end">₹' +
+                H.formatMoney(gst) +
+                '</td><td class="text-end fw-semibold">₹' +
+                H.formatMoney(r.total) +
+                '</td><td class="text-nowrap">' +
+                '<a class="btn btn-sm btn-outline-brand" href="invoice-print.html?id=' +
+                encodeURIComponent(r.id) +
+                '">Report</a> ' +
+                '<a class="btn btn-sm btn-brand" href="create-invoice.html?id=' +
+                encodeURIComponent(r.id) +
+                '">Edit</a></td></tr>'
+              );
+            })
+            .join("")
+        );
+        $("#recentCards").html(
+          rows
+            .map(function (r, idx) {
+              var gst = H.money(Number(r.cgst || 0) + Number(r.sgst || 0) + Number(r.igst || 0));
+              return (
+                '<div class="data-card"><div class="title">#' +
+                (idx + 1) +
+                " · " +
+                window.UI.escapeHtml(r.client_name || "") +
+                '</div><div class="meta">' +
+                typeLabel(r.doc_type) +
+                " · Bill #" +
+                (r.bill_number || 0) +
+                " · " +
+                H.formatDate(r.invoice_date) +
+                '</div><div class="meta">SubTotal ₹' +
+                H.formatMoney(r.sub_total) +
+                " · GST ₹" +
+                H.formatMoney(gst) +
+                " · Total ₹" +
+                H.formatMoney(r.total) +
+                '</div><div class="actions">' +
+                '<a class="btn btn-sm btn-outline-brand" href="invoice-print.html?id=' +
+                encodeURIComponent(r.id) +
+                '">Report</a>' +
+                '<a class="btn btn-sm btn-brand" href="create-invoice.html?id=' +
+                encodeURIComponent(r.id) +
+                '">Edit</a></div></div>'
+              );
+            })
+            .join("")
+        );
       }
-      $("#recentTable").html(rows.map(function (r, idx) {
-        var type = r.doc_type === "quotation" ? "Quotation" : "Tax Invoice";
-        return '<tr><td>' + (idx + 1) + '</td><td>' + (r.bill_number || 0) + '</td><td>' + type + '</td><td>' + window.UI.escapeHtml(r.client_name || "") +
-          '</td><td>' + H.formatDate(r.invoice_date) + '</td><td class="text-end">₹' + H.formatMoney(r.total) +
-          '</td><td><a class="btn btn-sm btn-outline-brand" href="invoice-print.html?id=' + encodeURIComponent(r.id) + '">Report</a></td></tr>';
-      }).join(""));
-      $("#recentCards").html(rows.map(function (r, idx) {
-        var type = r.doc_type === "quotation" ? "Quotation" : "Tax Invoice";
-        return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(r.client_name || "") +
-          '</div><div class="meta">' + type + ' · Bill #' + (r.bill_number || 0) + ' · ' + H.formatDate(r.invoice_date) +
-          '</div><div class="meta">₹' + H.formatMoney(r.total) + '</div><div class="actions">' +
-          '<a class="btn btn-sm btn-outline-brand" href="invoice-print.html?id=' + encodeURIComponent(r.id) + '">Report</a>' +
-          '<a class="btn btn-sm btn-brand" href="create-invoice.html?id=' + encodeURIComponent(r.id) + '">Edit</a></div></div>';
-      }).join(""));
+
+      if (!data.clients || !data.clients.length) {
+        $("#clientsSnap").html('<div class="text-muted">No clients yet.</div>');
+      } else {
+        $("#clientsSnap").html(
+          data.clients
+            .map(function (c, idx) {
+              return (
+                '<div class="dash-detail-row"><span>#' +
+                (idx + 1) +
+                " " +
+                window.UI.escapeHtml(c.client_name) +
+                '</span><span class="text-muted">' +
+                window.UI.escapeHtml(c.gst_no || c.state_code || "—") +
+                "</span></div>"
+              );
+            })
+            .join("")
+        );
+      }
+
+      if (!data.items || !data.items.length) {
+        $("#itemsSnap").html('<div class="text-muted">No items yet.</div>');
+      } else {
+        $("#itemsSnap").html(
+          data.items
+            .map(function (i, idx) {
+              return (
+                '<div class="dash-detail-row"><span>#' +
+                (idx + 1) +
+                " " +
+                window.UI.escapeHtml(i.item_name) +
+                "</span><strong>₹" +
+                H.formatMoney(i.rate) +
+                "</strong></div>"
+              );
+            })
+            .join("")
+        );
+      }
     });
   </script>
 </body>
