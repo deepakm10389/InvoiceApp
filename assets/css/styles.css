@@ -386,64 +386,104 @@ a {
   background: var(--danger);
 }
 
-/* Print / PDF invoice */
+/* Print / PDF invoice — matched to original SSRS report colors */
 .invoice-sheet {
+  --report-red: #e00000;
+  --report-blue: #2f6db5;
   background: #fff;
-  color: #000;
+  color: #111;
   max-width: 900px;
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 1.25rem 1.5rem;
   border: 1px solid #ccc;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 .invoice-sheet .letterhead {
   text-align: center;
-  border-bottom: 2px solid #222;
-  padding-bottom: 0.75rem;
-  margin-bottom: 1rem;
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.35rem;
 }
 
 .invoice-sheet .letterhead h1 {
   margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: 0.04em;
+  font-size: 1.55rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  color: var(--report-red);
+  font-weight: 700;
 }
 
 .invoice-sheet .letterhead .tagline {
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  margin-top: 0.2rem;
+  color: var(--report-red);
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .invoice-sheet .doc-title {
   text-align: center;
   font-weight: 700;
-  font-size: 1.2rem;
-  margin: 0.5rem 0 1rem;
-  letter-spacing: 0.08em;
+  font-size: 1.15rem;
+  margin: 0.35rem 0 0.75rem;
+  letter-spacing: 0.06em;
+  color: #111;
 }
 
-.invoice-sheet .meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
+.invoice-sheet .top-meta {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  font-size: 0.92rem;
+  margin-bottom: 0.75rem;
 }
 
-.invoice-sheet table {
+.invoice-sheet .section-label {
+  display: inline-block;
+  background: var(--report-blue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.85rem;
+  margin: 0.65rem 0 0.35rem;
+  border-radius: 1px;
+}
+
+.invoice-sheet .addr-block {
+  font-size: 0.9rem;
+  line-height: 1.35;
+  margin-bottom: 0.5rem;
+  max-width: 58%;
+}
+
+.invoice-sheet .addr-block .party-name {
+  font-weight: 700;
+}
+
+.invoice-sheet table.items-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
 }
 
-.invoice-sheet th,
-.invoice-sheet td {
-  border: 1px solid #333;
-  padding: 0.4rem 0.45rem;
+.invoice-sheet table.items-table th,
+.invoice-sheet table.items-table td {
+  border: 1px solid #555;
+  padding: 0.35rem 0.4rem;
+  vertical-align: top;
 }
 
-.invoice-sheet th {
-  background: #f0f0f0;
+.invoice-sheet table.items-table th {
+  background: #dbe8f6;
+  color: #123;
+  font-weight: 700;
+  text-align: left;
+}
+
+.invoice-sheet table.items-table tbody tr:nth-child(even) {
+  background: #f7fbff;
 }
 
 .invoice-sheet .num {
@@ -452,31 +492,72 @@ a {
 }
 
 .invoice-sheet .totals {
-  margin-top: 0.75rem;
-  max-width: 320px;
+  margin-top: 0.6rem;
+  max-width: 300px;
   margin-left: auto;
+  font-size: 0.92rem;
 }
 
 .invoice-sheet .totals div {
   display: flex;
   justify-content: space-between;
-  padding: 0.2rem 0;
+  padding: 0.18rem 0;
+  border-bottom: 1px solid #ddd;
 }
 
-.invoice-sheet .footer-note {
-  margin-top: 1.25rem;
+.invoice-sheet .totals .grand {
+  font-weight: 700;
+  color: var(--report-red);
+  border-bottom: 2px solid var(--report-red);
+  margin-top: 0.15rem;
+  padding-top: 0.3rem;
+}
+
+.invoice-sheet .sac-line {
+  margin-top: 0.85rem;
   font-size: 0.9rem;
 }
 
-.invoice-sheet .sign-bank {
+.invoice-sheet .footer-note {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Keep bank details + signature as one unbreakable block */
+.invoice-sheet .footer-keep-together {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+}
+
+.invoice-sheet .bank-box .section-label {
+  display: block;
+  width: fit-content;
+}
+
+.invoice-sheet .bank-box .bank-body {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-top: 0.35rem;
 }
 
 .invoice-sheet .sign {
   text-align: right;
+  font-size: 0.95rem;
+  padding-top: 0.35rem;
+}
+
+.invoice-sheet .sign .sign-line {
+  margin-top: 2.5rem;
+  border-top: 1px solid #333;
+  display: inline-block;
+  min-width: 160px;
+  padding-top: 0.25rem;
+  text-align: center;
 }
 
 @media (min-width: 768px) {
@@ -528,8 +609,11 @@ a {
     display: grid;
   }
 
-  .invoice-sheet .meta-grid,
-  .invoice-sheet .sign-bank {
+  .invoice-sheet .addr-block {
+    max-width: 100%;
+  }
+
+  .invoice-sheet .footer-keep-together {
     grid-template-columns: 1fr;
   }
 
@@ -557,6 +641,23 @@ a {
     border: 0;
     margin: 0;
     padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .invoice-sheet .footer-keep-together {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .invoice-sheet table.items-table {
+    page-break-inside: auto;
+  }
+
+  .invoice-sheet table.items-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   .no-print {

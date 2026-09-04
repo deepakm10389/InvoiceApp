@@ -38,6 +38,7 @@
       var profile = data.profile || {};
       var items = data.items || [];
       var title = inv.doc_type === "quotation" ? "QUOTATION" : "TAX INVOICE";
+      var proprietor = profile.proprietor_name || profile.biller_name || "";
 
       var rows = items
         .map(function (li, idx) {
@@ -69,23 +70,13 @@
         '<div class="doc-title">' +
         title +
         "</div>" +
-        '<div class="meta-grid">' +
-        "<div><strong>TO</strong><br><strong>" +
-        window.UI.escapeHtml(client.client_name || "") +
-        "</strong><br>" +
-        nl2br(client.address || "") +
-        "<br>GSTIN:" +
-        window.UI.escapeHtml(client.gst_no || "") +
-        "<br>PAN:" +
-        window.UI.escapeHtml(client.pan_no || "") +
-        "<br>SAC code - " +
-        window.UI.escapeHtml(inv.sac_code || "") +
-        "</div>" +
-        '<div style="text-align:right"><div><strong>BillNo :</strong> ' +
-        (inv.bill_number || 0) +
-        "</div><div><strong>Date :</strong> " +
+        '<div class="top-meta"><div><strong>Date :</strong> ' +
         H.formatDate(inv.invoice_date) +
-        "</div><div style='margin-top:0.75rem;text-align:left;display:inline-block'><strong>Address</strong><br>" +
+        "</div><div><strong>BillNo :</strong> " +
+        (inv.bill_number || 0) +
+        "</div></div>" +
+        '<div class="section-label">Address</div>' +
+        '<div class="addr-block">' +
         nl2br(profile.address || "") +
         "<br>GSTIN:" +
         window.UI.escapeHtml(profile.gst_no || "") +
@@ -95,8 +86,18 @@
         window.UI.escapeHtml(profile.email || "") +
         "<br>PAN:" +
         window.UI.escapeHtml(profile.pan_no || "") +
-        "</div></div></div>" +
-        "<table><thead><tr><th>No</th><th>Item Name</th><th>Type Name</th><th>Quantity</th><th>Rate</th><th>Total</th></tr></thead><tbody>" +
+        "</div>" +
+        '<div class="section-label">TO</div>' +
+        '<div class="addr-block"><div class="party-name">' +
+        window.UI.escapeHtml(client.client_name || "") +
+        "</div>" +
+        nl2br(client.address || "") +
+        "<br>GSTIN:" +
+        window.UI.escapeHtml(client.gst_no || "") +
+        "<br>PAN:" +
+        window.UI.escapeHtml(client.pan_no || "") +
+        "</div>" +
+        '<table class="items-table"><thead><tr><th>No</th><th>Item Name</th><th>Type Name</th><th>Quantity</th><th>Rate</th><th>Total</th></tr></thead><tbody>' +
         rows +
         "</tbody></table>" +
         '<div class="totals">' +
@@ -118,11 +119,16 @@
         " %</span><span>: " +
         H.formatMoney(inv.igst) +
         "</span></div>" +
-        "<div><strong>TOTAL</strong><strong>: " +
+        '<div class="grand"><span>TOTAL</span><span>: ' +
         H.formatMoney(inv.total) +
-        "</strong></div></div>" +
+        "</span></div></div>" +
+        '<div class="sac-line">SAC code - ' +
+        window.UI.escapeHtml(inv.sac_code || "") +
+        "</div>" +
         '<div class="footer-note">Note: Certified that the particulars given above are true and correct</div>' +
-        '<div class="sign-bank"><div><strong>BANK DETAILS</strong><br>Bank Name : ' +
+        '<div class="footer-keep-together">' +
+        '<div class="bank-box"><div class="section-label">BANK DETAILS</div><div class="bank-body">' +
+        "Bank Name : " +
         window.UI.escapeHtml(profile.bank_name || "") +
         "<br>Account no : " +
         window.UI.escapeHtml(profile.account_no || "") +
@@ -130,9 +136,11 @@
         window.UI.escapeHtml(profile.ifsc_code || "") +
         "<br>Branch : " +
         window.UI.escapeHtml(profile.branch || "") +
-        '</div><div class="sign">For ' +
-        window.UI.escapeHtml(profile.proprietor_name || profile.biller_name || "") +
-        "<br><br><br>Proprietor</div></div></div>"
+        '</div></div>' +
+        '<div class="sign">For ' +
+        window.UI.escapeHtml(proprietor) +
+        '<div class="sign-line">Proprietor</div></div>' +
+        "</div></div>"
       );
     }
 
@@ -169,7 +177,8 @@
             filename: name,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["css", "legacy"], avoid: [".footer-keep-together", ".bank-box", "tr"] }
           })
           .from(el)
           .save();
