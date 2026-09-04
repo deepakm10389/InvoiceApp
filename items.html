@@ -30,6 +30,7 @@
         <table class="table table-hover align-middle mb-0">
           <thead id="sortHeaders">
             <tr>
+              <th>#</th>
               <th data-sort="item_name">Item</th>
               <th data-sort="rate">Rate</th>
               <th data-sort="description">Description</th>
@@ -89,19 +90,19 @@
 
       function render(rows) {
         if (!rows.length) {
-          $("#gridBody").html('<tr><td colspan="4" class="text-muted">No items match your filters.</td></tr>');
+          $("#gridBody").html('<tr><td colspan="5" class="text-muted">No items match your filters.</td></tr>');
           $("#gridCards").html('<div class="text-muted">No items match your filters.</div>');
           return;
         }
-        $("#gridBody").html(rows.map(function (i) {
-          return '<tr><td><strong>' + window.UI.escapeHtml(i.item_name) + '</strong></td><td>₹' +
+        $("#gridBody").html(rows.map(function (i, idx) {
+          return '<tr><td>' + (idx + 1) + '</td><td><strong>' + window.UI.escapeHtml(i.item_name) + '</strong></td><td>₹' +
             H.formatMoney(i.rate) + '</td><td>' + window.UI.escapeHtml(i.description || "—") +
             '</td><td class="text-nowrap"><button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + i.id +
             '">Edit</button> <button class="btn btn-sm btn-outline-danger btn-del" data-id="' + i.id +
             '">Delete</button></td></tr>';
         }).join(""));
-        $("#gridCards").html(rows.map(function (i) {
-          return '<div class="data-card"><div class="title">' + window.UI.escapeHtml(i.item_name) +
+        $("#gridCards").html(rows.map(function (i, idx) {
+          return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(i.item_name) +
             '</div><div class="meta">Rate: ₹' + H.formatMoney(i.rate) +
             '</div><div class="meta">' + window.UI.escapeHtml(i.description || "") +
             '</div><div class="actions"><button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + i.id +

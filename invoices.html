@@ -52,6 +52,7 @@
         <table class="table table-hover align-middle mb-0">
           <thead id="sortHeaders">
             <tr>
+              <th>#</th>
               <th data-sort="bill_number">BillNo</th>
               <th data-sort="doc_type">Type</th>
               <th data-sort="biller_name">Biller</th>
@@ -98,12 +99,12 @@
 
       function render(rows) {
         if (!rows.length) {
-          $("#gridBody").html('<tr><td colspan="11" class="text-muted">No bills match your filters.</td></tr>');
+          $("#gridBody").html('<tr><td colspan="12" class="text-muted">No bills match your filters.</td></tr>');
           $("#gridCards").html('<div class="text-muted">No bills match your filters.</div>');
           return;
         }
-        $("#gridBody").html(rows.map(function (r) {
-          return '<tr><td>' + (r.bill_number || 0) + '</td><td>' + typeLabel(r.doc_type) +
+        $("#gridBody").html(rows.map(function (r, idx) {
+          return '<tr><td>' + (idx + 1) + '</td><td>' + (r.bill_number || 0) + '</td><td>' + typeLabel(r.doc_type) +
             '</td><td>' + window.UI.escapeHtml(r.biller_name || "") +
             '</td><td>' + window.UI.escapeHtml(r.client_name || "") +
             '</td><td>' + H.formatDate(r.invoice_date) +
@@ -117,8 +118,8 @@
             '<a class="btn btn-sm btn-brand" href="create-invoice.html?id=' + encodeURIComponent(r.id) + '">Edit</a> ' +
             '<button class="btn btn-sm btn-outline-danger btn-del" data-id="' + r.id + '">Delete</button></td></tr>';
         }).join(""));
-        $("#gridCards").html(rows.map(function (r) {
-          return '<div class="data-card"><div class="title">' + window.UI.escapeHtml(r.client_name || "") +
+        $("#gridCards").html(rows.map(function (r, idx) {
+          return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(r.client_name || "") +
             '</div><div class="meta">' + typeLabel(r.doc_type) + ' · Bill #' + (r.bill_number || 0) +
             ' · ' + H.formatDate(r.invoice_date) +
             '</div><div class="meta">Total ₹' + H.formatMoney(r.total) +

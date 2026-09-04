@@ -20,7 +20,7 @@
       <h2 class="h5 mb-3">Recent bills</h2>
       <div class="table-wrap desktop-table">
         <table class="table table-sm align-middle mb-0">
-          <thead><tr><th>Bill No</th><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>Bill No</th><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total</th><th></th></tr></thead>
           <tbody id="recentTable"></tbody>
         </table>
       </div>
@@ -49,19 +49,19 @@
       );
       var rows = data.recent || [];
       if (!rows.length) {
-        $("#recentTable").html('<tr><td colspan="6" class="text-muted">No bills yet. Create your first quotation or invoice.</td></tr>');
+        $("#recentTable").html('<tr><td colspan="7" class="text-muted">No bills yet. Create your first quotation or invoice.</td></tr>');
         $("#recentCards").html('<div class="text-muted">No bills yet.</div>');
         return;
       }
-      $("#recentTable").html(rows.map(function (r) {
+      $("#recentTable").html(rows.map(function (r, idx) {
         var type = r.doc_type === "quotation" ? "Quotation" : "Tax Invoice";
-        return '<tr><td>' + (r.bill_number || 0) + '</td><td>' + type + '</td><td>' + window.UI.escapeHtml(r.client_name || "") +
+        return '<tr><td>' + (idx + 1) + '</td><td>' + (r.bill_number || 0) + '</td><td>' + type + '</td><td>' + window.UI.escapeHtml(r.client_name || "") +
           '</td><td>' + H.formatDate(r.invoice_date) + '</td><td class="text-end">₹' + H.formatMoney(r.total) +
           '</td><td><a class="btn btn-sm btn-outline-brand" href="invoice-print.html?id=' + encodeURIComponent(r.id) + '">Report</a></td></tr>';
       }).join(""));
-      $("#recentCards").html(rows.map(function (r) {
+      $("#recentCards").html(rows.map(function (r, idx) {
         var type = r.doc_type === "quotation" ? "Quotation" : "Tax Invoice";
-        return '<div class="data-card"><div class="title">' + window.UI.escapeHtml(r.client_name || "") +
+        return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(r.client_name || "") +
           '</div><div class="meta">' + type + ' · Bill #' + (r.bill_number || 0) + ' · ' + H.formatDate(r.invoice_date) +
           '</div><div class="meta">₹' + H.formatMoney(r.total) + '</div><div class="actions">' +
           '<a class="btn btn-sm btn-outline-brand" href="invoice-print.html?id=' + encodeURIComponent(r.id) + '">Report</a>' +

@@ -30,6 +30,7 @@
         <table class="table table-hover align-middle mb-0">
           <thead id="sortHeaders">
             <tr>
+              <th>#</th>
               <th data-sort="client_name">Client</th>
               <th data-sort="gst_no">GSTIN</th>
               <th data-sort="mobile_no">Mobile</th>
@@ -114,12 +115,12 @@
 
       function render(rows) {
         if (!rows.length) {
-          $("#gridBody").html('<tr><td colspan="6" class="text-muted">No clients match your filters.</td></tr>');
+          $("#gridBody").html('<tr><td colspan="7" class="text-muted">No clients match your filters.</td></tr>');
           $("#gridCards").html('<div class="text-muted">No clients match your filters.</div>');
           return;
         }
-        $("#gridBody").html(rows.map(function (c) {
-          return '<tr><td><strong>' + window.UI.escapeHtml(c.client_name) + '</strong><div class="small text-muted">' +
+        $("#gridBody").html(rows.map(function (c, idx) {
+          return '<tr><td>' + (idx + 1) + '</td><td><strong>' + window.UI.escapeHtml(c.client_name) + '</strong><div class="small text-muted">' +
             window.UI.escapeHtml((c.address || "").split("\n")[0] || "") + '</div></td><td>' +
             window.UI.escapeHtml(c.gst_no || "—") + '</td><td>' + window.UI.escapeHtml(c.mobile_no || c.phone_no || "—") +
             '</td><td>' + window.UI.escapeHtml(c.state_code || "—") + '</td><td>' +
@@ -127,8 +128,8 @@
             '<button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + c.id + '">Edit</button> ' +
             '<button class="btn btn-sm btn-outline-danger btn-del" data-id="' + c.id + '">Delete</button></td></tr>';
         }).join(""));
-        $("#gridCards").html(rows.map(function (c) {
-          return '<div class="data-card"><div class="title">' + window.UI.escapeHtml(c.client_name) +
+        $("#gridCards").html(rows.map(function (c, idx) {
+          return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(c.client_name) +
             '</div><div class="meta">GST: ' + window.UI.escapeHtml(c.gst_no || "—") +
             '</div><div class="meta">Mobile: ' + window.UI.escapeHtml(c.mobile_no || c.phone_no || "—") +
             '</div><div class="meta">State: ' + window.UI.escapeHtml(c.state_code || "—") +
