@@ -10,7 +10,7 @@
 <body>
   <div id="pageRoot">
     <h1 class="page-title" id="pageHeading">Create quotation / invoice</h1>
-    <p class="page-sub">Add line items with SFT / RFT / Other. GST (CGST/SGST/IGST) calculates automatically.</p>
+    <p class="page-sub">Add line items with SFT / RFT / Other. GST is always CGST + SGST (e.g. 18% = 9% + 9%).</p>
 
     <form id="invoiceForm">
       <div class="card-panel">
@@ -44,6 +44,7 @@
           <div class="col-md-2">
             <label class="form-label">GST %</label>
             <input class="form-control" type="number" inputmode="decimal" id="gst_rate" step="0.01" min="0" value="18" />
+            <div class="form-text">Split equally as CGST + SGST</div>
           </div>
           <div class="col-md-2">
             <label class="form-label">SAC code</label>
@@ -133,6 +134,7 @@
             })
             .join("")
       );
+      window.UI.makeAutocompleteSelect($("#client_id"), { placeholder: "Search client…" });
       $("#pick_item").html(
         '<option value="">Select item</option>' +
           items
@@ -149,6 +151,10 @@
             })
             .join("")
       );
+      window.UI.makeAutocompleteSelect($("#pick_item"), { placeholder: "Search item…" });
+      window.UI.makeAutocompleteSelect($("#address_id"), { placeholder: "Search address…" });
+      window.UI.makeAutocompleteSelect($("#doc_type"), { placeholder: "Document type", includeEmpty: false });
+      window.UI.makeAutocompleteSelect($("#pick_type"), { placeholder: "Type", includeEmpty: false });
 
       async function loadAddresses(clientId, selectedId) {
         addresses = clientId ? await window.DB.listAddresses(clientId) : [];
@@ -175,6 +181,7 @@
               .join("")
         );
         if (selectedId) $("#address_id").val(selectedId);
+        window.UI.makeAutocompleteSelect($("#address_id"), { placeholder: "Search address…" });
       }
 
       async function refreshNumber() {
@@ -238,34 +245,24 @@
       }
 
       function recalc() {
-        var client = selectedClient();
-        var addr = selectedAddress();
-        var stateCode = (addr && addr.state_code) || (client && client.state_code) || "";
-        var sameState =
-          !!profile && String(profile.state_code || "") === String(stateCode);
         var sub = 0;
         lines.forEach(function (li) {
           sub += H.money(Number(li.quantity) * Number(li.rate));
         });
-        var gst = H.computeGst(sub, $("#gst_rate").val(), sameState);
+        var gst = H.computeGst(sub, $("#gst_rate").val());
         $("#totalsBox").html(
           '<div class="row-line"><span>SubTotal</span><span>₹' +
             H.formatMoney(gst.sub_total) +
             "</span></div>" +
             '<div class="row-line"><span>CGST ' +
             gst.cgst_pct.toFixed(2) +
-            " %</span><span>₹" +
+            " % (Central)</span><span>₹" +
             H.formatMoney(gst.cgst) +
             "</span></div>" +
             '<div class="row-line"><span>SGST ' +
             gst.sgst_pct.toFixed(2) +
-            " %</span><span>₹" +
+            " % (State)</span><span>₹" +
             H.formatMoney(gst.sgst) +
-            "</span></div>" +
-            '<div class="row-line"><span>IGST ' +
-            gst.igst_pct.toFixed(2) +
-            " %</span><span>₹" +
-            H.formatMoney(gst.igst) +
             "</span></div>" +
             '<div class="row-line grand"><span>TOTAL</span><span>₹' +
             H.formatMoney(gst.total) +

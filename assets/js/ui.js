@@ -202,6 +202,114 @@
     return window.confirm(message);
   }
 
+  /**
+   * Turn a <select> into a searchable autocomplete box.
+   * Call again after rebuilding options to refresh the label list.
+   */
+  function makeAutocompleteSelect($select, opts) {
+    opts = opts || {};
+    $select = $($select);
+    if (!$select.length) return;
+
+    var placeholder = opts.placeholder || $select.find("option:first").text() || "Search…";
+    var $wrap = $select.data("ac-wrap");
+    if (!$wrap || !$wrap.length) {
+      $wrap = $('<div class="ac-wrap"></div>');
+      var $input = $(
+        '<input type="text" class="form-control ac-input" autocomplete="off" spellcheck="false" />'
+      );
+      var $list = $('<div class="ac-list" hidden></div>');
+      $select.hide().after($wrap);
+      $wrap.append($input).append($list);
+      $select.data("ac-wrap", $wrap);
+      $select.data("ac-input", $input);
+      $select.data("ac-list", $list);
+
+      function hideList() {
+        $list.attr("hidden", true);
+      }
+
+      function showList(filter) {
+        var q = String(filter || "")
+          .toLowerCase()
+          .trim();
+        var html = "";
+        $select.find("option").each(function () {
+          var $opt = $(this);
+          var val = $opt.attr("value");
+          var text = $opt.text();
+          if (val === "" && !opts.includeEmpty) return;
+          if (q && text.toLowerCase().indexOf(q) === -1 && String(val).toLowerCase().indexOf(q) === -1) {
+            return;
+          }
+          html +=
+            '<button type="button" class="ac-option" data-value="' +
+            escapeHtml(val) +
+            '">' +
+            escapeHtml(text) +
+            "</button>";
+        });
+        if (!html) {
+          html = '<div class="ac-empty">No matches</div>';
+        }
+        $list.html(html).removeAttr("hidden");
+      }
+
+      function syncFromSelect() {
+        var $sel = $select.find("option:selected");
+        var val = $select.val();
+        if (!val) {
+          $input.val("");
+          $input.attr("placeholder", placeholder);
+        } else {
+          $input.val($sel.text());
+        }
+      }
+
+      $input.on("focus", function () {
+        showList($input.val());
+      });
+      $input.on("input", function () {
+        // typing clears underlying value until a choice is picked
+        $select.val("");
+        showList($input.val());
+      });
+      $list.on("mousedown", ".ac-option", function (e) {
+        e.preventDefault();
+        var val = $(this).attr("data-value");
+        $select.val(val).trigger("change");
+        syncFromSelect();
+        hideList();
+      });
+      $input.on("keydown", function (e) {
+        if (e.key === "Escape") hideList();
+        if (e.key === "Enter") {
+          e.preventDefault();
+          var $first = $list.find(".ac-option").first();
+          if ($first.length) $first.trigger("mousedown");
+        }
+      });
+      $(document).on("click.ac." + $select.attr("id"), function (e) {
+        if (!$(e.target).closest($wrap).length) hideList();
+      });
+
+      $select.on("change.acSync", syncFromSelect);
+      $select.data("ac-sync", syncFromSelect);
+      syncFromSelect();
+    } else {
+      // refresh display after options rebuilt
+      var sync = $select.data("ac-sync");
+      if (sync) sync();
+      $select.data("ac-input").attr("placeholder", placeholder);
+    }
+  }
+
+  function bindAutocompletes(selectors) {
+    (selectors || []).forEach(function (sel) {
+      makeAutocompleteSelect($(sel));
+    });
+  }
+
   window.UI = {
     toast: toast,
     escapeHtml: escapeHtml,
@@ -209,6 +317,8 @@
     createGridController: createGridController,
     bindFilterBar: bindFilterBar,
     confirm: confirmAction,
+    makeAutocompleteSelect: makeAutocompleteSelect,
+    bindAutocompletes: bindAutocompletes,
     async bootPage(activePage) {
       window.initDB();
       var session = await window.Auth.requireAuth();

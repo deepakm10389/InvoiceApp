@@ -24,34 +24,25 @@
     return Math.round(x * 100) / 100;
   }
 
-  function computeGst(subTotal, gstRate, sameState) {
+  function computeGst(subTotal, gstRate) {
+    // Business rule: always CGST + SGST (central + state), never IGST.
+    // e.g. 18% => CGST 9% + SGST 9%.
     var rate = Number(gstRate);
     if (!isFinite(rate)) rate = window.APP_CONFIG.DEFAULT_GST_RATE || 18;
     subTotal = money(subTotal);
-    var cgst = 0,
-      sgst = 0,
-      igst = 0,
-      cgstPct = 0,
-      sgstPct = 0,
-      igstPct = 0;
-    if (sameState) {
-      cgstPct = rate / 2;
-      sgstPct = rate / 2;
-      cgst = money(subTotal * (cgstPct / 100));
-      sgst = money(subTotal * (sgstPct / 100));
-    } else {
-      igstPct = rate;
-      igst = money(subTotal * (igstPct / 100));
-    }
+    var cgstPct = rate / 2;
+    var sgstPct = rate / 2;
+    var cgst = money(subTotal * (cgstPct / 100));
+    var sgst = money(subTotal * (sgstPct / 100));
     return {
       sub_total: subTotal,
       cgst_pct: cgstPct,
       sgst_pct: sgstPct,
-      igst_pct: igstPct,
+      igst_pct: 0,
       cgst: cgst,
       sgst: sgst,
-      igst: igst,
-      total: money(subTotal + cgst + sgst + igst),
+      igst: 0,
+      total: money(subTotal + cgst + sgst),
       gst_rate: rate
     };
   }
@@ -181,7 +172,7 @@
         line_total: 30000
       }
     ];
-    var gst = computeGst(180000, 18, true);
+    var gst = computeGst(180000, 18);
     var invoice = {
       id: "inv1",
       user_id: userId,
@@ -720,14 +711,11 @@
       if (!address) throw new Error("Please select a valid client address");
       if (!payload.items || !payload.items.length) throw new Error("Add at least one line item");
 
-      var stateCode = address.state_code || client.state_code || "";
-      var sameState =
-        String(profile && profile.state_code ? profile.state_code : "") === String(stateCode);
       var sub = 0;
       payload.items.forEach(function (li) {
         sub += money(Number(li.quantity) * Number(li.rate));
       });
-      var gst = computeGst(sub, payload.gst_rate, sameState);
+      var gst = computeGst(sub, payload.gst_rate);
       var docType = payload.doc_type || "tax_invoice";
       var billNumber = Number(payload.bill_number);
       var invoiceId = payload.id || uid();
@@ -1087,14 +1075,11 @@
         if (addrRes.error || !addrRes.data) throw new Error("Please select a valid client address");
         if (!payload.items || !payload.items.length) throw new Error("Add at least one line item");
 
-        var stateCode = addrRes.data.state_code || clientRes.data.state_code || "";
-        var sameState =
-          String(profile && profile.state_code ? profile.state_code : "") === String(stateCode);
         var sub = 0;
         payload.items.forEach(function (li) {
           sub += money(Number(li.quantity) * Number(li.rate));
         });
-        var gst = computeGst(sub, payload.gst_rate, sameState);
+        var gst = computeGst(sub, payload.gst_rate);
         var docType = payload.doc_type || "tax_invoice";
         var billNumber = Number(payload.bill_number);
 

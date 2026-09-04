@@ -261,6 +261,51 @@ a {
   border-radius: 10px;
 }
 
+.ac-wrap {
+  position: relative;
+}
+
+.ac-input {
+  width: 100%;
+}
+
+.ac-list {
+  position: absolute;
+  z-index: 1050;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 240px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.ac-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.65rem 0.85rem;
+  min-height: 40px;
+  color: var(--ink);
+}
+
+.ac-option:hover,
+.ac-option:focus {
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
+.ac-empty {
+  padding: 0.75rem 0.85rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
