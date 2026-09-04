@@ -446,12 +446,15 @@ a {
 .invoice-sheet .section-label {
   display: inline-block;
   background: var(--report-blue);
+  background-color: #2f6db5;
   color: #fff;
   font-weight: 700;
   font-size: 0.9rem;
   padding: 0.2rem 0.85rem;
   margin: 0.65rem 0 0.35rem;
   border-radius: 1px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .invoice-sheet .addr-block {
