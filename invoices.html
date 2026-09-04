@@ -92,6 +92,8 @@
           return '<option value="' + c.id + '">' + window.UI.escapeHtml(c.client_name) + "</option>";
         }).join("")
       );
+      window.UI.makeAutocompleteSelect($("#filterClient"), { placeholder: "Search client…" });
+      window.UI.makeAutocompleteSelect($("#filterType"), { placeholder: "Doc type", includeEmpty: true });
 
       function typeLabel(t) {
         return t === "quotation" ? "Quotation" : "Tax Invoice";

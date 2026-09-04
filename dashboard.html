@@ -165,10 +165,9 @@
       );
 
       $("#gstBox").html(
-        detailRow("CGST", "₹" + H.formatMoney(data.cgstTotal || 0)) +
-          detailRow("SGST", "₹" + H.formatMoney(data.sgstTotal || 0)) +
-          detailRow("IGST", "₹" + H.formatMoney(data.igstTotal || 0)) +
-          detailRow("Total GST", "₹" + H.formatMoney(data.gstTotal || 0))
+        detailRow("CGST (Central)", "₹" + H.formatMoney(data.cgstTotal || 0)) +
+          detailRow("SGST (State)", "₹" + H.formatMoney(data.sgstTotal || 0)) +
+          detailRow("Total GST (CGST+SGST)", "₹" + H.formatMoney(data.gstTotal || 0))
       );
 
       $("#mixBox").html(

@@ -325,6 +325,7 @@
         $("#bill_number").val(inv.bill_number);
         $("#invoice_date").val(String(inv.invoice_date).slice(0, 10));
         $("#client_id").val(inv.client_id);
+        window.UI.makeAutocompleteSelect($("#client_id"), { placeholder: "Search client…" });
         await loadAddresses(inv.client_id, inv.address_id);
         $("#gst_rate").val(inv.gst_rate);
         $("#sac_code").val(inv.sac_code || "");
