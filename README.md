@@ -14,7 +14,15 @@ HTML + jQuery GST quotation / tax invoice app, rebuilt from the existing .NET + 
 - Mobile-first responsive UI (hamburger menu, card lists on phones)
 - Profile / letterhead + bank details + change password
 
-## Quick start (demo mode — no signup needed)
+## Import masters from the old .NET app
+
+Seed JSON extracted from Manage Client / Manage Item is in [`scripts/seed-data/`](scripts/seed-data/).
+
+1. Sign in
+2. Open [Import masters](import-masters.html) (also in the sidebar)
+3. Click **Import into my account**
+
+About **290 clients** (with Address 1) and **38 items** will be loaded. Duplicate names are skipped.
 
 1. Open the folder in a static file server, or simply open `login.html` via a local HTTP server.
 2. Sign in with:
