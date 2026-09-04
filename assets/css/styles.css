@@ -629,9 +629,8 @@ a {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .dash-grid.two,
-  .dash-grid:has(+ .dash-grid) {
-    /* keep default 3-col; snapshots section uses same class with 2 children — fallback below */
+  .dash-grid.two-col {
+    grid-template-columns: 1fr 1fr;
   }
 
   .filter-bar {
