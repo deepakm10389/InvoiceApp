@@ -38,7 +38,9 @@
       var profile = data.profile || {};
       var items = data.items || [];
       var title = inv.doc_type === "quotation" ? "QUOTATION" : "TAX INVOICE";
+      var numberLabel = inv.doc_type === "quotation" ? "Quotation No" : "BillNo";
       var proprietor = profile.proprietor_name || profile.biller_name || "";
+      var toAddress = (data.address && data.address.address) || client.address || "";
 
       var rows = items
         .map(function (li, idx) {
@@ -75,7 +77,9 @@
         "</div>" +
         '<div class="top-meta"><div><strong>Date :</strong> ' +
         H.formatDate(inv.invoice_date) +
-        "</div><div><strong>BillNo :</strong> " +
+        "</div><div><strong>" +
+        numberLabel +
+        " :</strong> " +
         (inv.bill_number || 0) +
         "</div></div>" +
         '<div class="section-label" style="display:inline-block;background-color:#2f6db5;color:#ffffff;font-weight:700;font-size:0.9rem;padding:0.2rem 0.85rem;margin:0.65rem 0 0.35rem;">Address</div>' +
@@ -94,7 +98,7 @@
         '<div class="addr-block"><div class="party-name">' +
         window.UI.escapeHtml(client.client_name || "") +
         "</div>" +
-        nl2br(client.address || "") +
+        nl2br(toAddress) +
         "<br>GSTIN:" +
         window.UI.escapeHtml(client.gst_no || "") +
         "<br>PAN:" +

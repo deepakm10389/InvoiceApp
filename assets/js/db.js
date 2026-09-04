@@ -132,6 +132,33 @@
       proprietor_name: "Fayanath R Maurya"
     };
 
+    var addresses = [
+      {
+        id: "a1",
+        user_id: userId,
+        client_id: "c1",
+        label: "Address 1",
+        address: "Mahalaxmi",
+        state_code: "27"
+      },
+      {
+        id: "a2",
+        user_id: userId,
+        client_id: "c1",
+        label: "Address 2",
+        address: "Andheri West, Mumbai",
+        state_code: "27"
+      },
+      {
+        id: "a3",
+        user_id: userId,
+        client_id: "c2",
+        label: "Address 1",
+        address:
+          "Floor No 1St floor Building No Flat No B-1 Name Of Premises Building Tulsi Vihar Road Street DR A B Road City Town Village Worli Naka Worli Mumbai Maharashtra 400018",
+        state_code: "27"
+      }
+    ];
     var invItems = [
       {
         id: "li1",
@@ -161,6 +188,7 @@
       doc_type: "tax_invoice",
       bill_number: 8,
       client_id: "c2",
+      address_id: "a3",
       invoice_date: "2026-08-16",
       sac_code: "",
       gst_rate: gst.gst_rate,
@@ -186,11 +214,41 @@
       ],
       profiles: [profile],
       clients: [client1, client2],
+      client_addresses: addresses,
       items: items,
       invoices: [invoice],
       invoice_items: invItems,
       bill_seq: 8
     };
+  }
+
+  function migrateStore(store) {
+    if (!store.client_addresses) store.client_addresses = [];
+    // Move legacy single client.address into client_addresses when missing
+    (store.clients || []).forEach(function (c) {
+      var hasAddr = store.client_addresses.some(function (a) {
+        return a.client_id === c.id;
+      });
+      if (!hasAddr && c.address && String(c.address).trim()) {
+        store.client_addresses.push({
+          id: uid(),
+          user_id: c.user_id,
+          client_id: c.id,
+          label: "Address 1",
+          address: c.address,
+          state_code: c.state_code || ""
+        });
+      }
+    });
+    (store.invoices || []).forEach(function (inv) {
+      if (!inv.address_id) {
+        var first = store.client_addresses.find(function (a) {
+          return a.client_id === inv.client_id;
+        });
+        if (first) inv.address_id = first.id;
+      }
+    });
+    return store;
   }
 
   function loadStore() {
@@ -201,7 +259,9 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
         return seeded;
       }
-      return JSON.parse(raw);
+      var parsed = migrateStore(JSON.parse(raw));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      return parsed;
     } catch (e) {
       var fresh = seedDemo();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
@@ -391,14 +451,77 @@
         .filter(function (c) {
           return c.user_id === session.user.id;
         })
+        .map(function (c) {
+          var addrs = store.client_addresses.filter(function (a) {
+            return a.client_id === c.id;
+          });
+          return Object.assign({}, c, {
+            address_count: addrs.length,
+            addresses: addrs
+          });
+        })
         .slice()
         .sort(function (a, b) {
           return a.client_name.localeCompare(b.client_name);
         });
     },
+    async listAddresses(clientId) {
+      var session = getSession();
+      var store = loadStore();
+      return store.client_addresses
+        .filter(function (a) {
+          return a.user_id === session.user.id && a.client_id === clientId;
+        })
+        .slice()
+        .sort(function (a, b) {
+          return String(a.label || "").localeCompare(String(b.label || ""));
+        });
+    },
+    async saveAddress(addr) {
+      var session = getSession();
+      var store = loadStore();
+      if (!addr.client_id) throw new Error("Client is required for address");
+      if (!addr.address || !String(addr.address).trim()) throw new Error("Address is required");
+      var existingForClient = store.client_addresses.filter(function (a) {
+        return a.client_id === addr.client_id && a.user_id === session.user.id;
+      });
+      if (addr.id) {
+        var idx = store.client_addresses.findIndex(function (a) {
+          return a.id === addr.id && a.user_id === session.user.id;
+        });
+        if (idx < 0) throw new Error("Address not found");
+        store.client_addresses[idx] = Object.assign({}, store.client_addresses[idx], addr, {
+          user_id: session.user.id
+        });
+        saveStore(store);
+        return store.client_addresses[idx];
+      }
+      var label = addr.label && String(addr.label).trim()
+        ? addr.label.trim()
+        : "Address " + (existingForClient.length + 1);
+      var row = Object.assign({}, addr, {
+        id: uid(),
+        user_id: session.user.id,
+        label: label
+      });
+      store.client_addresses.push(row);
+      saveStore(store);
+      return row;
+    },
+    async deleteAddress(id) {
+      var session = getSession();
+      var store = loadStore();
+      store.client_addresses = store.client_addresses.filter(function (a) {
+        return !(a.id === id && a.user_id === session.user.id);
+      });
+      saveStore(store);
+    },
     async saveClient(client) {
       var session = getSession();
       var store = loadStore();
+      var addresses = client.addresses;
+      delete client.addresses;
+      delete client.address_count;
       if (client.id) {
         var idx = store.clients.findIndex(function (c) {
           return c.id === client.id && c.user_id === session.user.id;
@@ -412,6 +535,30 @@
       }
       var row = Object.assign({}, client, { id: uid(), user_id: session.user.id });
       store.clients.push(row);
+      // optional first address from legacy address field
+      if (row.address && String(row.address).trim()) {
+        store.client_addresses.push({
+          id: uid(),
+          user_id: session.user.id,
+          client_id: row.id,
+          label: "Address 1",
+          address: row.address,
+          state_code: row.state_code || ""
+        });
+      }
+      if (addresses && addresses.length) {
+        addresses.forEach(function (a, i) {
+          if (!a.address || !String(a.address).trim()) return;
+          store.client_addresses.push({
+            id: uid(),
+            user_id: session.user.id,
+            client_id: row.id,
+            label: a.label || "Address " + (i + 1),
+            address: a.address,
+            state_code: a.state_code || row.state_code || ""
+          });
+        });
+      }
       saveStore(store);
       return row;
     },
@@ -420,6 +567,9 @@
       var store = loadStore();
       store.clients = store.clients.filter(function (c) {
         return !(c.id === id && c.user_id === session.user.id);
+      });
+      store.client_addresses = store.client_addresses.filter(function (a) {
+        return !(a.client_id === id && a.user_id === session.user.id);
       });
       saveStore(store);
     },
@@ -469,6 +619,10 @@
       store.clients.forEach(function (c) {
         clients[c.id] = c;
       });
+      var addresses = {};
+      store.client_addresses.forEach(function (a) {
+        addresses[a.id] = a;
+      });
       var profile = store.profiles.find(function (p) {
         return p.id === session.user.id;
       });
@@ -477,8 +631,11 @@
           return inv.user_id === session.user.id;
         })
         .map(function (inv) {
+          var addr = inv.address_id ? addresses[inv.address_id] : null;
           return Object.assign({}, inv, {
             client_name: clients[inv.client_id] ? clients[inv.client_id].client_name : "",
+            address_label: addr ? addr.label || "" : "",
+            address_text: addr ? addr.address || "" : "",
             biller_name: profile ? profile.biller_name : ""
           });
         })
@@ -496,6 +653,9 @@
       var client = store.clients.find(function (c) {
         return c.id === inv.client_id;
       });
+      var address = store.client_addresses.find(function (a) {
+        return a.id === inv.address_id;
+      });
       var items = store.invoice_items.filter(function (li) {
         return li.invoice_id === inv.id;
       });
@@ -505,6 +665,7 @@
       return {
         invoice: inv,
         client: client || null,
+        address: address || null,
         items: items,
         profile: profile || null
       };
@@ -514,7 +675,29 @@
       var store = loadStore();
       var max = 0;
       store.invoices.forEach(function (inv) {
-        if (inv.user_id === session.user.id && Number(inv.bill_number) > max) {
+        if (
+          inv.user_id === session.user.id &&
+          inv.doc_type !== "quotation" &&
+          Number(inv.bill_number) > max
+        ) {
+          max = Number(inv.bill_number);
+        }
+      });
+      return max + 1;
+    },
+    async nextQuotationNumber(clientId, addressId, excludeInvoiceId) {
+      var session = getSession();
+      var store = loadStore();
+      var max = 0;
+      store.invoices.forEach(function (inv) {
+        if (excludeInvoiceId && inv.id === excludeInvoiceId) return;
+        if (
+          inv.user_id === session.user.id &&
+          inv.doc_type === "quotation" &&
+          inv.client_id === clientId &&
+          String(inv.address_id || "") === String(addressId || "") &&
+          Number(inv.bill_number) > max
+        ) {
           max = Number(inv.bill_number);
         }
       });
@@ -530,11 +713,16 @@
         return c.id === payload.client_id && c.user_id === session.user.id;
       });
       if (!client) throw new Error("Please select a client");
+      if (!payload.address_id) throw new Error("Please select a client address");
+      var address = store.client_addresses.find(function (a) {
+        return a.id === payload.address_id && a.client_id === payload.client_id;
+      });
+      if (!address) throw new Error("Please select a valid client address");
       if (!payload.items || !payload.items.length) throw new Error("Add at least one line item");
 
+      var stateCode = address.state_code || client.state_code || "";
       var sameState =
-        String(profile && profile.state_code ? profile.state_code : "") ===
-        String(client.state_code || "");
+        String(profile && profile.state_code ? profile.state_code : "") === String(stateCode);
       var sub = 0;
       payload.items.forEach(function (li) {
         sub += money(Number(li.quantity) * Number(li.rate));
@@ -542,16 +730,38 @@
       var gst = computeGst(sub, payload.gst_rate, sameState);
       var docType = payload.doc_type || "tax_invoice";
       var billNumber = Number(payload.bill_number);
-      if (docType === "quotation") billNumber = 0;
-      else if (!billNumber) billNumber = await this.nextBillNumber();
-
       var invoiceId = payload.id || uid();
+
+      if (docType === "quotation") {
+        // Auto serial per client + address (keep existing number when editing same pair)
+        var existing = store.invoices.find(function (i) {
+          return i.id === invoiceId;
+        });
+        var samePair =
+          existing &&
+          existing.doc_type === "quotation" &&
+          existing.client_id === payload.client_id &&
+          String(existing.address_id || "") === String(payload.address_id || "");
+        if (samePair && Number(existing.bill_number) > 0) {
+          billNumber = Number(existing.bill_number);
+        } else {
+          billNumber = await this.nextQuotationNumber(
+            payload.client_id,
+            payload.address_id,
+            invoiceId
+          );
+        }
+      } else if (!billNumber) {
+        billNumber = await this.nextBillNumber();
+      }
+
       var invoice = {
         id: invoiceId,
         user_id: session.user.id,
         doc_type: docType,
         bill_number: billNumber,
         client_id: payload.client_id,
+        address_id: payload.address_id,
         invoice_date: payload.invoice_date || todayISO(),
         sac_code: payload.sac_code || "",
         gst_rate: gst.gst_rate,
@@ -591,7 +801,7 @@
         });
       });
 
-      if (billNumber > (store.bill_seq || 0)) store.bill_seq = billNumber;
+      if (docType !== "quotation" && billNumber > (store.bill_seq || 0)) store.bill_seq = billNumber;
       saveStore(store);
       return invoice;
     },
@@ -682,13 +892,58 @@
       },
       async listClients() {
         await requireUser();
-        var res = await client.from("clients").select("*").order("client_name");
+        var res = await client.from("clients").select("*, client_addresses(*)").order("client_name");
+        if (res.error) {
+          var plain = await client.from("clients").select("*").order("client_name");
+          if (plain.error) throw new Error(plain.error.message);
+          return plain.data || [];
+        }
+        return (res.data || []).map(function (c) {
+          var addrs = c.client_addresses || [];
+          return Object.assign({}, c, {
+            addresses: addrs,
+            address_count: addrs.length,
+            client_addresses: undefined
+          });
+        });
+      },
+      async listAddresses(clientId) {
+        await requireUser();
+        var res = await client
+          .from("client_addresses")
+          .select("*")
+          .eq("client_id", clientId)
+          .order("label");
         if (res.error) throw new Error(res.error.message);
         return res.data || [];
+      },
+      async saveAddress(addr) {
+        var user = await requireUser();
+        if (!addr.client_id) throw new Error("Client is required for address");
+        if (!addr.address || !String(addr.address).trim()) throw new Error("Address is required");
+        var row = Object.assign({}, addr, { user_id: user.id });
+        if (!row.id) {
+          delete row.id;
+          if (!row.label) {
+            var existing = await this.listAddresses(addr.client_id);
+            row.label = "Address " + (existing.length + 1);
+          }
+        }
+        var res = await client.from("client_addresses").upsert(row).select().single();
+        if (res.error) throw new Error(res.error.message);
+        return res.data;
+      },
+      async deleteAddress(id) {
+        await requireUser();
+        var res = await client.from("client_addresses").delete().eq("id", id);
+        if (res.error) throw new Error(res.error.message);
       },
       async saveClient(clientRow) {
         var user = await requireUser();
         var row = Object.assign({}, clientRow, { user_id: user.id });
+        delete row.addresses;
+        delete row.address_count;
+        delete row.client_addresses;
         if (!row.id) delete row.id;
         var res = await client.from("clients").upsert(row).select().single();
         if (res.error) throw new Error(res.error.message);
@@ -696,6 +951,7 @@
       },
       async deleteClient(id) {
         await requireUser();
+        await client.from("client_addresses").delete().eq("client_id", id);
         var res = await client.from("clients").delete().eq("id", id);
         if (res.error) throw new Error(res.error.message);
       },
@@ -722,28 +978,30 @@
         await requireUser();
         var res = await client
           .from("invoices")
-          .select("*, clients(client_name), profiles:user_id(biller_name)")
+          .select("*, clients(client_name), client_addresses(label, address)")
           .order("invoice_date", { ascending: false });
+        var profile = await this.getProfile();
         if (res.error) {
-          // fallback without join aliases
           var plain = await client
             .from("invoices")
             .select("*, clients(client_name)")
             .order("invoice_date", { ascending: false });
           if (plain.error) throw new Error(plain.error.message);
-          var profile = await this.getProfile();
           return (plain.data || []).map(function (inv) {
             return Object.assign({}, inv, {
               client_name: inv.clients ? inv.clients.client_name : "",
+              address_label: "",
+              address_text: "",
               biller_name: profile ? profile.biller_name : ""
             });
           });
         }
-        var profile2 = await this.getProfile();
         return (res.data || []).map(function (inv) {
           return Object.assign({}, inv, {
             client_name: inv.clients ? inv.clients.client_name : "",
-            biller_name: profile2 ? profile2.biller_name : ""
+            address_label: inv.client_addresses ? inv.client_addresses.label || "" : "",
+            address_text: inv.client_addresses ? inv.client_addresses.address || "" : "",
+            biller_name: profile ? profile.biller_name : ""
           });
         });
       },
@@ -757,6 +1015,15 @@
           .select("*")
           .eq("id", invRes.data.client_id)
           .maybeSingle();
+        var address = null;
+        if (invRes.data.address_id) {
+          var addrRes = await client
+            .from("client_addresses")
+            .select("*")
+            .eq("id", invRes.data.address_id)
+            .maybeSingle();
+          address = addrRes.data || null;
+        }
         var itemsRes = await client
           .from("invoice_items")
           .select("*")
@@ -766,6 +1033,7 @@
         return {
           invoice: invRes.data,
           client: clientRes.data || null,
+          address: address,
           items: itemsRes.data || [],
           profile: profile
         };
@@ -775,11 +1043,30 @@
         var res = await client
           .from("invoices")
           .select("bill_number")
+          .neq("doc_type", "quotation")
           .order("bill_number", { ascending: false })
           .limit(1);
         if (res.error) throw new Error(res.error.message);
         var max = res.data && res.data[0] ? Number(res.data[0].bill_number) : 0;
         return (max || 0) + 1;
+      },
+      async nextQuotationNumber(clientId, addressId, excludeInvoiceId) {
+        await requireUser();
+        var q = client
+          .from("invoices")
+          .select("id,bill_number")
+          .eq("doc_type", "quotation")
+          .eq("client_id", clientId)
+          .eq("address_id", addressId)
+          .order("bill_number", { ascending: false });
+        var res = await q;
+        if (res.error) throw new Error(res.error.message);
+        var max = 0;
+        (res.data || []).forEach(function (inv) {
+          if (excludeInvoiceId && inv.id === excludeInvoiceId) return;
+          if (Number(inv.bill_number) > max) max = Number(inv.bill_number);
+        });
+        return max + 1;
       },
       async saveInvoice(payload) {
         var user = await requireUser();
@@ -790,11 +1077,19 @@
           .eq("id", payload.client_id)
           .maybeSingle();
         if (clientRes.error || !clientRes.data) throw new Error("Please select a client");
+        if (!payload.address_id) throw new Error("Please select a client address");
+        var addrRes = await client
+          .from("client_addresses")
+          .select("*")
+          .eq("id", payload.address_id)
+          .eq("client_id", payload.client_id)
+          .maybeSingle();
+        if (addrRes.error || !addrRes.data) throw new Error("Please select a valid client address");
         if (!payload.items || !payload.items.length) throw new Error("Add at least one line item");
 
+        var stateCode = addrRes.data.state_code || clientRes.data.state_code || "";
         var sameState =
-          String(profile && profile.state_code ? profile.state_code : "") ===
-          String(clientRes.data.state_code || "");
+          String(profile && profile.state_code ? profile.state_code : "") === String(stateCode);
         var sub = 0;
         payload.items.forEach(function (li) {
           sub += money(Number(li.quantity) * Number(li.rate));
@@ -802,14 +1097,44 @@
         var gst = computeGst(sub, payload.gst_rate, sameState);
         var docType = payload.doc_type || "tax_invoice";
         var billNumber = Number(payload.bill_number);
-        if (docType === "quotation") billNumber = 0;
-        else if (!billNumber) billNumber = await this.nextBillNumber();
+
+        if (docType === "quotation") {
+          if (payload.id) {
+            var existing = await client
+              .from("invoices")
+              .select("*")
+              .eq("id", payload.id)
+              .maybeSingle();
+            var ex = existing.data;
+            var samePair =
+              ex &&
+              ex.doc_type === "quotation" &&
+              ex.client_id === payload.client_id &&
+              String(ex.address_id || "") === String(payload.address_id || "");
+            if (samePair && Number(ex.bill_number) > 0) billNumber = Number(ex.bill_number);
+            else
+              billNumber = await this.nextQuotationNumber(
+                payload.client_id,
+                payload.address_id,
+                payload.id
+              );
+          } else {
+            billNumber = await this.nextQuotationNumber(
+              payload.client_id,
+              payload.address_id,
+              null
+            );
+          }
+        } else if (!billNumber) {
+          billNumber = await this.nextBillNumber();
+        }
 
         var invoice = {
           user_id: user.id,
           doc_type: docType,
           bill_number: billNumber,
           client_id: payload.client_id,
+          address_id: payload.address_id,
           invoice_date: payload.invoice_date || todayISO(),
           sac_code: payload.sac_code || "",
           gst_rate: gst.gst_rate,

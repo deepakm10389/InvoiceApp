@@ -1,5 +1,7 @@
 -- Invoice App schema for Supabase (Postgres)
 -- Run this once in Supabase → SQL Editor after creating your free project.
+-- If you already ran an older schema, also run the ALTER / client_addresses
+-- section safely (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
 
 create extension if not exists "pgcrypto";
 
@@ -35,6 +37,17 @@ create table if not exists public.clients (
   created_at timestamptz default now()
 );
 
+-- Multiple site/addresses per client
+create table if not exists public.client_addresses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  client_id uuid not null references public.clients(id) on delete cascade,
+  label text default '',
+  address text not null default '',
+  state_code text default '',
+  created_at timestamptz default now()
+);
+
 create table if not exists public.items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -50,6 +63,7 @@ create table if not exists public.invoices (
   doc_type text not null default 'tax_invoice' check (doc_type in ('quotation','tax_invoice')),
   bill_number integer not null default 0,
   client_id uuid not null references public.clients(id),
+  address_id uuid null references public.client_addresses(id) on delete set null,
   invoice_date date not null default current_date,
   sac_code text default '',
   gst_rate numeric(6,2) not null default 18,
@@ -64,6 +78,9 @@ create table if not exists public.invoices (
   created_at timestamptz default now()
 );
 
+-- For existing databases created before address_id existed:
+alter table public.invoices add column if not exists address_id uuid null references public.client_addresses(id) on delete set null;
+
 create table if not exists public.invoice_items (
   id uuid primary key default gen_random_uuid(),
   invoice_id uuid not null references public.invoices(id) on delete cascade,
@@ -76,13 +93,17 @@ create table if not exists public.invoice_items (
 );
 
 create index if not exists idx_clients_user on public.clients(user_id);
+create index if not exists idx_client_addresses_client on public.client_addresses(client_id);
+create index if not exists idx_client_addresses_user on public.client_addresses(user_id);
 create index if not exists idx_items_user on public.items(user_id);
 create index if not exists idx_invoices_user on public.invoices(user_id);
 create index if not exists idx_invoices_date on public.invoices(invoice_date);
+create index if not exists idx_invoices_quote_seq on public.invoices(user_id, client_id, address_id, doc_type, bill_number);
 create index if not exists idx_invoice_items_invoice on public.invoice_items(invoice_id);
 
 alter table public.profiles enable row level security;
 alter table public.clients enable row level security;
+alter table public.client_addresses enable row level security;
 alter table public.items enable row level security;
 alter table public.invoices enable row level security;
 alter table public.invoice_items enable row level security;
@@ -94,6 +115,9 @@ create policy "profiles_upsert_own" on public.profiles for all using (auth.uid()
 
 drop policy if exists "clients_own" on public.clients;
 create policy "clients_own" on public.clients for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "client_addresses_own" on public.client_addresses;
+create policy "client_addresses_own" on public.client_addresses for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "items_own" on public.items;
 create policy "items_own" on public.items for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -129,3 +153,12 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- One-time migrate: copy legacy clients.address into client_addresses when empty
+insert into public.client_addresses (user_id, client_id, label, address, state_code)
+select c.user_id, c.id, 'Address 1', c.address, c.state_code
+from public.clients c
+where coalesce(trim(c.address), '') <> ''
+  and not exists (
+    select 1 from public.client_addresses a where a.client_id = c.id
+  );

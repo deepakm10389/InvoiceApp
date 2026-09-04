@@ -53,10 +53,10 @@
           <thead id="sortHeaders">
             <tr>
               <th>#</th>
-              <th data-sort="bill_number">BillNo</th>
+              <th data-sort="bill_number">No</th>
               <th data-sort="doc_type">Type</th>
-              <th data-sort="biller_name">Biller</th>
               <th data-sort="client_name">Client</th>
+              <th data-sort="address_label">Address</th>
               <th data-sort="invoice_date">Date</th>
               <th data-sort="sub_total">SubTotal</th>
               <th data-sort="cgst">CGST</th>
@@ -104,9 +104,11 @@
           return;
         }
         $("#gridBody").html(rows.map(function (r, idx) {
+          var addr = r.address_label || r.address_text || "—";
+          if (String(addr).length > 40) addr = String(addr).slice(0, 40) + "…";
           return '<tr><td>' + (idx + 1) + '</td><td>' + (r.bill_number || 0) + '</td><td>' + typeLabel(r.doc_type) +
-            '</td><td>' + window.UI.escapeHtml(r.biller_name || "") +
             '</td><td>' + window.UI.escapeHtml(r.client_name || "") +
+            '</td><td>' + window.UI.escapeHtml(addr) +
             '</td><td>' + H.formatDate(r.invoice_date) +
             '</td><td class="text-end">' + H.formatMoney(r.sub_total) +
             '</td><td class="text-end">' + H.formatMoney(r.cgst) +
@@ -120,11 +122,11 @@
         }).join(""));
         $("#gridCards").html(rows.map(function (r, idx) {
           return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(r.client_name || "") +
-            '</div><div class="meta">' + typeLabel(r.doc_type) + ' · Bill #' + (r.bill_number || 0) +
+            '</div><div class="meta">' + typeLabel(r.doc_type) + ' · No ' + (r.bill_number || 0) +
             ' · ' + H.formatDate(r.invoice_date) +
+            '</div><div class="meta">' + window.UI.escapeHtml(r.address_label || r.address_text || "") +
             '</div><div class="meta">Total ₹' + H.formatMoney(r.total) +
-            ' (CGST ' + H.formatMoney(r.cgst) + ' / SGST ' + H.formatMoney(r.sgst) + ' / IGST ' + H.formatMoney(r.igst) +
-            ')</div><div class="actions">' +
+            '</div><div class="actions">' +
             '<a class="btn btn-sm btn-outline-brand" href="invoice-print.html?id=' + encodeURIComponent(r.id) + '">Report</a>' +
             '<a class="btn btn-sm btn-brand" href="create-invoice.html?id=' + encodeURIComponent(r.id) + '">Edit</a>' +
             '<button class="btn btn-sm btn-outline-danger btn-del" data-id="' + r.id + '">Delete</button></div></div>';

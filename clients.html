@@ -12,7 +12,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
       <div>
         <h1 class="page-title">Clients</h1>
-        <p class="page-sub mb-0">Manage customers for quotations and tax invoices.</p>
+        <p class="page-sub mb-0">One client can have multiple site addresses for quotations.</p>
       </div>
       <button class="btn btn-brand" type="button" id="btnAdd">+ Add client</button>
     </div>
@@ -21,7 +21,7 @@
       <div class="filter-bar clients">
         <div>
           <label class="form-label" for="searchBox">Search</label>
-          <input class="form-control" id="searchBox" placeholder="Name, GST, phone, email…" />
+          <input class="form-control" id="searchBox" placeholder="Name, GST, phone, email, address…" />
         </div>
       </div>
       <div class="filter-meta" id="filterMeta"></div>
@@ -32,10 +32,10 @@
             <tr>
               <th>#</th>
               <th data-sort="client_name">Client</th>
+              <th data-sort="address_count">Addresses</th>
               <th data-sort="gst_no">GSTIN</th>
               <th data-sort="mobile_no">Mobile</th>
               <th data-sort="state_code">State</th>
-              <th data-sort="email_id">Email</th>
               <th></th>
             </tr>
           </thead>
@@ -58,10 +58,6 @@
           <div class="mb-3">
             <label class="form-label">Client name *</label>
             <input class="form-control" id="client_name" required />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Address</label>
-            <textarea class="form-control" id="address" rows="3"></textarea>
           </div>
           <div class="row g-2">
             <div class="col-6 mb-3">
@@ -87,9 +83,13 @@
               <input class="form-control" id="state_code" placeholder="e.g. 27" />
             </div>
           </div>
-          <div class="mb-0">
+          <div class="mb-3">
             <label class="form-label">Email</label>
             <input class="form-control" type="email" id="email_id" />
+          </div>
+          <div class="mb-0" id="firstAddressWrap">
+            <label class="form-label">First address (optional)</label>
+            <textarea class="form-control" id="first_address" rows="2" placeholder="You can add more addresses after saving"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -97,6 +97,41 @@
           <button type="submit" class="btn btn-brand">Save</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="addrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Addresses — <span id="addrClientName"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="addrClientId" />
+          <form id="addrForm" class="card-panel mb-3">
+            <input type="hidden" id="addrId" />
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label">Label</label>
+                <input class="form-control" id="addr_label" placeholder="Address 1 / Site A" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">State code</label>
+                <input class="form-control" id="addr_state" placeholder="27" />
+              </div>
+              <div class="col-md-5 d-flex align-items-end">
+                <button type="submit" class="btn btn-brand w-100" id="addrSaveBtn">Add address</button>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Address *</label>
+                <textarea class="form-control" id="addr_text" rows="3" required></textarea>
+              </div>
+            </div>
+          </form>
+          <div id="addrList"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -112,6 +147,7 @@
       var session = await window.UI.bootPage("clients.html");
       if (!session) return;
       var modal = new bootstrap.Modal("#editModal");
+      var addrModal = new bootstrap.Modal("#addrModal");
 
       function render(rows) {
         if (!rows.length) {
@@ -120,22 +156,24 @@
           return;
         }
         $("#gridBody").html(rows.map(function (c, idx) {
-          return '<tr><td>' + (idx + 1) + '</td><td><strong>' + window.UI.escapeHtml(c.client_name) + '</strong><div class="small text-muted">' +
-            window.UI.escapeHtml((c.address || "").split("\n")[0] || "") + '</div></td><td>' +
-            window.UI.escapeHtml(c.gst_no || "—") + '</td><td>' + window.UI.escapeHtml(c.mobile_no || c.phone_no || "—") +
-            '</td><td>' + window.UI.escapeHtml(c.state_code || "—") + '</td><td>' +
-            window.UI.escapeHtml(c.email_id || "—") + '</td><td class="text-nowrap">' +
+          return '<tr><td>' + (idx + 1) + '</td><td><strong>' + window.UI.escapeHtml(c.client_name) +
+            '</strong></td><td>' + (c.address_count || 0) +
+            '</td><td>' + window.UI.escapeHtml(c.gst_no || "—") +
+            '</td><td>' + window.UI.escapeHtml(c.mobile_no || c.phone_no || "—") +
+            '</td><td>' + window.UI.escapeHtml(c.state_code || "—") +
+            '</td><td class="text-nowrap">' +
+            '<button class="btn btn-sm btn-outline-brand btn-addrs" data-id="' + c.id + '">Addresses</button> ' +
             '<button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + c.id + '">Edit</button> ' +
             '<button class="btn btn-sm btn-outline-danger btn-del" data-id="' + c.id + '">Delete</button></td></tr>';
         }).join(""));
         $("#gridCards").html(rows.map(function (c, idx) {
           return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(c.client_name) +
+            '</div><div class="meta">Addresses: ' + (c.address_count || 0) +
             '</div><div class="meta">GST: ' + window.UI.escapeHtml(c.gst_no || "—") +
-            '</div><div class="meta">Mobile: ' + window.UI.escapeHtml(c.mobile_no || c.phone_no || "—") +
-            '</div><div class="meta">State: ' + window.UI.escapeHtml(c.state_code || "—") +
-            '</div><div class="actions"><button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + c.id +
-            '">Edit</button><button class="btn btn-sm btn-outline-danger btn-del" data-id="' + c.id +
-            '">Delete</button></div></div>';
+            '</div><div class="actions">' +
+            '<button class="btn btn-sm btn-outline-brand btn-addrs" data-id="' + c.id + '">Addresses</button>' +
+            '<button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + c.id + '">Edit</button>' +
+            '<button class="btn btn-sm btn-outline-danger btn-del" data-id="' + c.id + '">Delete</button></div></div>';
         }).join(""));
       }
 
@@ -153,10 +191,29 @@
         window._clientsCache = rows;
       }
 
+      async function renderAddrList(clientId) {
+        var list = await window.DB.listAddresses(clientId);
+        if (!list.length) {
+          $("#addrList").html('<div class="text-muted">No addresses yet. Add the first site address above.</div>');
+          return;
+        }
+        $("#addrList").html(list.map(function (a, idx) {
+          return '<div class="data-card mb-2"><div class="title">#' + (idx + 1) + ' · ' +
+            window.UI.escapeHtml(a.label || "Address") +
+            '</div><div class="meta">' + window.UI.escapeHtml(a.address || "") +
+            '</div><div class="meta">State: ' + window.UI.escapeHtml(a.state_code || "—") +
+            '</div><div class="actions">' +
+            '<button type="button" class="btn btn-sm btn-outline-brand btn-addr-edit" data-id="' + a.id + '">Edit</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger btn-addr-del" data-id="' + a.id + '">Delete</button></div></div>';
+        }).join(""));
+        window._addrCache = list;
+      }
+
       $("#btnAdd").on("click", function () {
         $("#modalTitle").text("Add client");
         $("#editForm")[0].reset();
         $("#clientId").val("");
+        $("#firstAddressWrap").show();
         modal.show();
       });
 
@@ -167,18 +224,77 @@
         $("#modalTitle").text("Edit client");
         $("#clientId").val(c.id);
         $("#client_name").val(c.client_name);
-        $("#address").val(c.address || "");
         $("#phone_no").val(c.phone_no || "");
         $("#mobile_no").val(c.mobile_no || "");
         $("#gst_no").val(c.gst_no || "");
         $("#pan_no").val(c.pan_no || "");
         $("#state_code").val(c.state_code || "");
         $("#email_id").val(c.email_id || "");
+        $("#first_address").val("");
+        $("#firstAddressWrap").hide();
         modal.show();
       });
 
+      $(document).on("click", ".btn-addrs", async function () {
+        var id = $(this).data("id");
+        var c = (window._clientsCache || []).find(function (x) { return x.id === id; });
+        if (!c) return;
+        $("#addrClientId").val(c.id);
+        $("#addrClientName").text(c.client_name);
+        $("#addrForm")[0].reset();
+        $("#addrId").val("");
+        $("#addr_state").val(c.state_code || "");
+        $("#addrSaveBtn").text("Add address");
+        await renderAddrList(c.id);
+        addrModal.show();
+      });
+
+      $(document).on("click", ".btn-addr-edit", function () {
+        var id = $(this).data("id");
+        var a = (window._addrCache || []).find(function (x) { return x.id === id; });
+        if (!a) return;
+        $("#addrId").val(a.id);
+        $("#addr_label").val(a.label || "");
+        $("#addr_state").val(a.state_code || "");
+        $("#addr_text").val(a.address || "");
+        $("#addrSaveBtn").text("Update address");
+      });
+
+      $(document).on("click", ".btn-addr-del", async function () {
+        if (!window.UI.confirm("Delete this address?")) return;
+        try {
+          await window.DB.deleteAddress($(this).data("id"));
+          window.UI.toast("Address deleted", "success");
+          await renderAddrList($("#addrClientId").val());
+          await reload();
+        } catch (err) {
+          window.UI.toast(err.message, "error");
+        }
+      });
+
+      $("#addrForm").on("submit", async function (e) {
+        e.preventDefault();
+        try {
+          await window.DB.saveAddress({
+            id: $("#addrId").val() || undefined,
+            client_id: $("#addrClientId").val(),
+            label: $("#addr_label").val().trim(),
+            state_code: $("#addr_state").val().trim(),
+            address: $("#addr_text").val().trim()
+          });
+          $("#addrForm")[0].reset();
+          $("#addrId").val("");
+          $("#addrSaveBtn").text("Add address");
+          window.UI.toast("Address saved", "success");
+          await renderAddrList($("#addrClientId").val());
+          await reload();
+        } catch (err) {
+          window.UI.toast(err.message, "error");
+        }
+      });
+
       $(document).on("click", ".btn-del", async function () {
-        if (!window.UI.confirm("Delete this client?")) return;
+        if (!window.UI.confirm("Delete this client and all its addresses?")) return;
         try {
           await window.DB.deleteClient($(this).data("id"));
           window.UI.toast("Client deleted", "success");
@@ -191,20 +307,23 @@
       $("#editForm").on("submit", async function (e) {
         e.preventDefault();
         try {
-          await window.DB.saveClient({
+          var saved = await window.DB.saveClient({
             id: $("#clientId").val() || undefined,
             client_name: $("#client_name").val().trim(),
-            address: $("#address").val().trim(),
             phone_no: $("#phone_no").val().trim(),
             mobile_no: $("#mobile_no").val().trim(),
             gst_no: $("#gst_no").val().trim(),
             pan_no: $("#pan_no").val().trim(),
             state_code: $("#state_code").val().trim(),
-            email_id: $("#email_id").val().trim()
+            email_id: $("#email_id").val().trim(),
+            address: $("#first_address").val().trim()
           });
           modal.hide();
           window.UI.toast("Client saved", "success");
           await reload();
+          if (!$("#clientId").val() && $("#first_address").val().trim() === "" && saved) {
+            // prompt to add addresses
+          }
         } catch (err) {
           window.UI.toast(err.message, "error");
         }

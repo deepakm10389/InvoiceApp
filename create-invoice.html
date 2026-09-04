@@ -23,17 +23,23 @@
             </select>
           </div>
           <div class="col-md-4">
-            <label class="form-label">Bill number</label>
-            <input class="form-control" type="number" inputmode="numeric" id="bill_number" min="0" />
-            <div class="form-text">0 for quotations. Auto-filled for tax invoices.</div>
+            <label class="form-label" id="numberLabel">Quotation / Bill number</label>
+            <input class="form-control" type="number" inputmode="numeric" id="bill_number" min="0" readonly />
+            <div class="form-text" id="numberHint">Quotations auto-number per client + address (1, 2, 3…).</div>
           </div>
           <div class="col-md-4">
             <label class="form-label">Date</label>
             <input class="form-control" type="date" id="invoice_date" required />
           </div>
-          <div class="col-md-8">
+          <div class="col-md-6">
             <label class="form-label">Client *</label>
             <select class="form-select" id="client_id" required></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Client address *</label>
+            <select class="form-select" id="address_id" required>
+              <option value="">Select client first</option>
+            </select>
           </div>
           <div class="col-md-2">
             <label class="form-label">GST %</label>
@@ -104,6 +110,7 @@
       var profile = null;
       var clients = [];
       var items = [];
+      var addresses = [];
 
       profile = await window.DB.getProfile();
       clients = await window.DB.listClients();
@@ -114,93 +121,164 @@
 
       $("#client_id").html(
         '<option value="">Select client</option>' +
-          clients.map(function (c) {
-            return '<option value="' + c.id + '">' + window.UI.escapeHtml(c.client_name) + "</option>";
-          }).join("")
+          clients
+            .map(function (c) {
+              return (
+                '<option value="' +
+                c.id +
+                '">' +
+                window.UI.escapeHtml(c.client_name) +
+                "</option>"
+              );
+            })
+            .join("")
       );
       $("#pick_item").html(
         '<option value="">Select item</option>' +
-          items.map(function (i) {
-            return (
-              '<option value="' +
-              i.id +
-              '" data-rate="' +
-              i.rate +
-              '">' +
-              window.UI.escapeHtml(i.item_name) +
-              "</option>"
-            );
-          }).join("")
+          items
+            .map(function (i) {
+              return (
+                '<option value="' +
+                i.id +
+                '" data-rate="' +
+                i.rate +
+                '">' +
+                window.UI.escapeHtml(i.item_name) +
+                "</option>"
+              );
+            })
+            .join("")
       );
 
-      if (!editId) {
-        var next = await window.DB.nextBillNumber();
-        $("#bill_number").val(0);
-        $("#doc_type").val("quotation");
-        $("#doc_type").on("change", async function () {
-          if ($(this).val() === "tax_invoice") {
-            $("#bill_number").val(await window.DB.nextBillNumber());
-          } else {
-            $("#bill_number").val(0);
-          }
-        });
-      } else {
-        $("#pageHeading").text("Edit bill");
-        var data = await window.DB.getInvoice(editId);
-        if (!data) {
-          window.UI.toast("Bill not found", "error");
+      async function loadAddresses(clientId, selectedId) {
+        addresses = clientId ? await window.DB.listAddresses(clientId) : [];
+        if (!addresses.length) {
+          $("#address_id").html(
+            '<option value="">No addresses — add in Clients</option>'
+          );
           return;
         }
-        var inv = data.invoice;
-        $("#doc_type").val(inv.doc_type);
-        $("#bill_number").val(inv.bill_number);
-        $("#invoice_date").val(String(inv.invoice_date).slice(0, 10));
-        $("#client_id").val(inv.client_id);
-        $("#gst_rate").val(inv.gst_rate);
-        $("#sac_code").val(inv.sac_code || "");
-        lines = (data.items || []).map(function (li) {
-          return {
-            item_id: li.item_id,
-            item_name: li.item_name,
-            type_name: li.type_name,
-            quantity: Number(li.quantity),
-            rate: Number(li.rate)
-          };
-        });
-        $("#btnOpenReport")
-          .removeClass("d-none")
-          .attr("href", "invoice-print.html?id=" + encodeURIComponent(editId));
+        $("#address_id").html(
+          '<option value="">Select address</option>' +
+            addresses
+              .map(function (a) {
+                var label = (a.label ? a.label + " — " : "") + (a.address || "");
+                if (label.length > 70) label = label.slice(0, 70) + "…";
+                return (
+                  '<option value="' +
+                  a.id +
+                  '">' +
+                  window.UI.escapeHtml(label) +
+                  "</option>"
+                );
+              })
+              .join("")
+        );
+        if (selectedId) $("#address_id").val(selectedId);
+      }
+
+      async function refreshNumber() {
+        var docType = $("#doc_type").val();
+        var clientId = $("#client_id").val();
+        var addressId = $("#address_id").val();
+        if (docType === "quotation") {
+          $("#numberLabel").text("Quotation number");
+          $("#numberHint").text(
+            "Auto serial for this client + address (starts at 1 for each address)."
+          );
+          $("#bill_number").prop("readonly", true);
+          if (clientId && addressId) {
+            var n = await window.DB.nextQuotationNumber(clientId, addressId, editId);
+            // when editing same pair, saveInvoice keeps existing; preview next for new only
+            if (editId) {
+              var data = await window.DB.getInvoice(editId);
+              if (
+                data &&
+                data.invoice.doc_type === "quotation" &&
+                data.invoice.client_id === clientId &&
+                String(data.invoice.address_id || "") === String(addressId)
+              ) {
+                $("#bill_number").val(data.invoice.bill_number);
+                return;
+              }
+            }
+            $("#bill_number").val(n);
+          } else {
+            $("#bill_number").val("");
+          }
+        } else {
+          $("#numberLabel").text("Bill number");
+          $("#numberHint").text("Auto-incremented tax invoice number.");
+          $("#bill_number").prop("readonly", true);
+          if (editId) {
+            var cur = await window.DB.getInvoice(editId);
+            if (cur && cur.invoice.doc_type !== "quotation") {
+              $("#bill_number").val(cur.invoice.bill_number);
+              return;
+            }
+          }
+          $("#bill_number").val(await window.DB.nextBillNumber());
+        }
+      }
+
+      function selectedAddress() {
+        var id = $("#address_id").val();
+        return addresses.find(function (a) {
+          return a.id === id;
+        }) || null;
       }
 
       function selectedClient() {
         var id = $("#client_id").val();
-        return clients.find(function (c) { return c.id === id; }) || null;
+        return (
+          clients.find(function (c) {
+            return c.id === id;
+          }) || null
+        );
       }
 
       function recalc() {
         var client = selectedClient();
+        var addr = selectedAddress();
+        var stateCode = (addr && addr.state_code) || (client && client.state_code) || "";
         var sameState =
-          !!profile &&
-          !!client &&
-          String(profile.state_code || "") === String(client.state_code || "");
+          !!profile && String(profile.state_code || "") === String(stateCode);
         var sub = 0;
         lines.forEach(function (li) {
           sub += H.money(Number(li.quantity) * Number(li.rate));
         });
         var gst = H.computeGst(sub, $("#gst_rate").val(), sameState);
         $("#totalsBox").html(
-          '<div class="row-line"><span>SubTotal</span><span>₹' + H.formatMoney(gst.sub_total) + "</span></div>" +
-            '<div class="row-line"><span>CGST ' + gst.cgst_pct.toFixed(2) + " %</span><span>₹" + H.formatMoney(gst.cgst) + "</span></div>" +
-            '<div class="row-line"><span>SGST ' + gst.sgst_pct.toFixed(2) + " %</span><span>₹" + H.formatMoney(gst.sgst) + "</span></div>" +
-            '<div class="row-line"><span>IGST ' + gst.igst_pct.toFixed(2) + " %</span><span>₹" + H.formatMoney(gst.igst) + "</span></div>" +
-            '<div class="row-line grand"><span>TOTAL</span><span>₹' + H.formatMoney(gst.total) + "</span></div>"
+          '<div class="row-line"><span>SubTotal</span><span>₹' +
+            H.formatMoney(gst.sub_total) +
+            "</span></div>" +
+            '<div class="row-line"><span>CGST ' +
+            gst.cgst_pct.toFixed(2) +
+            " %</span><span>₹" +
+            H.formatMoney(gst.cgst) +
+            "</span></div>" +
+            '<div class="row-line"><span>SGST ' +
+            gst.sgst_pct.toFixed(2) +
+            " %</span><span>₹" +
+            H.formatMoney(gst.sgst) +
+            "</span></div>" +
+            '<div class="row-line"><span>IGST ' +
+            gst.igst_pct.toFixed(2) +
+            " %</span><span>₹" +
+            H.formatMoney(gst.igst) +
+            "</span></div>" +
+            '<div class="row-line grand"><span>TOTAL</span><span>₹' +
+            H.formatMoney(gst.total) +
+            "</span></div>"
         );
         return gst;
       }
 
       function renderLines() {
         if (!lines.length) {
-          $("#linesHost").html('<div class="text-muted">No line items yet. Add an item above.</div>');
+          $("#linesHost").html(
+            '<div class="text-muted">No line items yet. Add an item above.</div>'
+          );
           recalc();
           return;
         }
@@ -228,6 +306,49 @@
         recalc();
       }
 
+      $("#client_id").on("change", async function () {
+        await loadAddresses($(this).val(), null);
+        await refreshNumber();
+        recalc();
+      });
+      $("#address_id, #doc_type").on("change", async function () {
+        await refreshNumber();
+        recalc();
+      });
+
+      if (editId) {
+        $("#pageHeading").text("Edit bill");
+        var data = await window.DB.getInvoice(editId);
+        if (!data) {
+          window.UI.toast("Bill not found", "error");
+          return;
+        }
+        var inv = data.invoice;
+        $("#doc_type").val(inv.doc_type);
+        $("#bill_number").val(inv.bill_number);
+        $("#invoice_date").val(String(inv.invoice_date).slice(0, 10));
+        $("#client_id").val(inv.client_id);
+        await loadAddresses(inv.client_id, inv.address_id);
+        $("#gst_rate").val(inv.gst_rate);
+        $("#sac_code").val(inv.sac_code || "");
+        lines = (data.items || []).map(function (li) {
+          return {
+            item_id: li.item_id,
+            item_name: li.item_name,
+            type_name: li.type_name,
+            quantity: Number(li.quantity),
+            rate: Number(li.rate)
+          };
+        });
+        $("#btnOpenReport")
+          .removeClass("d-none")
+          .attr("href", "invoice-print.html?id=" + encodeURIComponent(editId));
+        await refreshNumber();
+      } else {
+        $("#doc_type").val("quotation");
+        await refreshNumber();
+      }
+
       $("#pick_item").on("change", function () {
         var opt = $(this).find(":selected");
         var rate = opt.data("rate");
@@ -236,7 +357,9 @@
 
       $("#btnAddLine").on("click", function () {
         var itemId = $("#pick_item").val();
-        var item = items.find(function (i) { return i.id === itemId; });
+        var item = items.find(function (i) {
+          return i.id === itemId;
+        });
         var qty = Number($("#pick_qty").val());
         var rate = Number($("#pick_rate").val());
         if (!item) {
@@ -263,7 +386,7 @@
         renderLines();
       });
 
-      $("#client_id, #gst_rate").on("change input", recalc);
+      $("#gst_rate").on("change input", recalc);
 
       $("#invoiceForm").on("submit", async function (e) {
         e.preventDefault();
@@ -273,13 +396,15 @@
             doc_type: $("#doc_type").val(),
             bill_number: Number($("#bill_number").val()),
             client_id: $("#client_id").val(),
+            address_id: $("#address_id").val(),
             invoice_date: $("#invoice_date").val(),
             sac_code: $("#sac_code").val().trim(),
             gst_rate: Number($("#gst_rate").val()),
             items: lines
           });
           window.UI.toast(editId ? "Bill updated" : "Bill saved", "success");
-          window.location.href = "invoice-print.html?id=" + encodeURIComponent(saved.id);
+          window.location.href =
+            "invoice-print.html?id=" + encodeURIComponent(saved.id);
         } catch (err) {
           window.UI.toast(err.message || "Save failed", "error");
         }
