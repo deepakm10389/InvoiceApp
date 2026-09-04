@@ -42,18 +42,21 @@
 
       var rows = items
         .map(function (li, idx) {
+          var bg = idx % 2 === 1 ? "background-color:#f7fbff;" : "background-color:#ffffff;";
           return (
-            "<tr><td>" +
+            '<tr style="' +
+            bg +
+            '"><td style="border:1px solid #555;padding:0.35rem 0.4rem;">' +
             (idx + 1) +
-            "</td><td>" +
+            '</td><td style="border:1px solid #555;padding:0.35rem 0.4rem;">' +
             nl2br(li.item_name) +
-            "</td><td>" +
+            '</td><td style="border:1px solid #555;padding:0.35rem 0.4rem;">' +
             window.UI.escapeHtml(li.type_name || "") +
-            '</td><td class="num">' +
+            '</td><td class="num" style="border:1px solid #555;padding:0.35rem 0.4rem;text-align:right;">' +
             H.formatMoney(li.quantity) +
-            '</td><td class="num">' +
+            '</td><td class="num" style="border:1px solid #555;padding:0.35rem 0.4rem;text-align:right;">' +
             H.formatMoney(li.rate) +
-            '</td><td class="num">' +
+            '</td><td class="num" style="border:1px solid #555;padding:0.35rem 0.4rem;text-align:right;">' +
             H.formatMoney(li.line_total) +
             "</td></tr>"
           );
@@ -61,10 +64,10 @@
         .join("");
 
       return (
-        '<div class="invoice-sheet" id="invoiceSheet">' +
-        '<div class="letterhead"><h1>' +
+        '<div class="invoice-sheet" id="invoiceSheet" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;">' +
+        '<div class="letterhead"><h1 style="color:#e00000;margin:0;font-size:1.55rem;text-transform:uppercase;font-weight:700;">' +
         window.UI.escapeHtml(profile.biller_name || "") +
-        '</h1><div class="tagline">' +
+        '</h1><div class="tagline" style="color:#e00000;font-size:0.82rem;margin-top:0.2rem;font-weight:600;text-transform:uppercase;">' +
         window.UI.escapeHtml(profile.tagline || "") +
         "</div></div>" +
         '<div class="doc-title">' +
@@ -75,7 +78,7 @@
         "</div><div><strong>BillNo :</strong> " +
         (inv.bill_number || 0) +
         "</div></div>" +
-        '<div class="section-label">Address</div>' +
+        '<div class="section-label" style="display:inline-block;background-color:#2f6db5;color:#ffffff;font-weight:700;font-size:0.9rem;padding:0.2rem 0.85rem;margin:0.65rem 0 0.35rem;">Address</div>' +
         '<div class="addr-block">' +
         nl2br(profile.address || "") +
         "<br>GSTIN:" +
@@ -87,7 +90,7 @@
         "<br>PAN:" +
         window.UI.escapeHtml(profile.pan_no || "") +
         "</div>" +
-        '<div class="section-label">TO</div>' +
+        '<div class="section-label" style="display:inline-block;background-color:#2f6db5;color:#ffffff;font-weight:700;font-size:0.9rem;padding:0.2rem 0.85rem;margin:0.65rem 0 0.35rem;">TO</div>' +
         '<div class="addr-block"><div class="party-name">' +
         window.UI.escapeHtml(client.client_name || "") +
         "</div>" +
@@ -97,7 +100,14 @@
         "<br>PAN:" +
         window.UI.escapeHtml(client.pan_no || "") +
         "</div>" +
-        '<table class="items-table"><thead><tr><th>No</th><th>Item Name</th><th>Type Name</th><th>Quantity</th><th>Rate</th><th>Total</th></tr></thead><tbody>' +
+        '<table class="items-table"><thead><tr>' +
+        '<th style="background-color:#dbe8f6;color:#112233;border:1px solid #555;padding:0.35rem 0.4rem;">No</th>' +
+        '<th style="background-color:#dbe8f6;color:#112233;border:1px solid #555;padding:0.35rem 0.4rem;">Item Name</th>' +
+        '<th style="background-color:#dbe8f6;color:#112233;border:1px solid #555;padding:0.35rem 0.4rem;">Type Name</th>' +
+        '<th style="background-color:#dbe8f6;color:#112233;border:1px solid #555;padding:0.35rem 0.4rem;">Quantity</th>' +
+        '<th style="background-color:#dbe8f6;color:#112233;border:1px solid #555;padding:0.35rem 0.4rem;">Rate</th>' +
+        '<th style="background-color:#dbe8f6;color:#112233;border:1px solid #555;padding:0.35rem 0.4rem;">Total</th>' +
+        "</tr></thead><tbody>" +
         rows +
         "</tbody></table>" +
         '<div class="totals">' +
@@ -119,7 +129,7 @@
         " %</span><span>: " +
         H.formatMoney(inv.igst) +
         "</span></div>" +
-        '<div class="grand"><span>TOTAL</span><span>: ' +
+        '<div class="grand" style="font-weight:700;color:#e00000;border-bottom:2px solid #e00000;"><span>TOTAL</span><span>: ' +
         H.formatMoney(inv.total) +
         "</span></div></div>" +
         '<div class="sac-line">SAC code - ' +
@@ -127,7 +137,7 @@
         "</div>" +
         '<div class="footer-note">Note: Certified that the particulars given above are true and correct</div>' +
         '<div class="footer-keep-together">' +
-        '<div class="bank-box"><div class="section-label">BANK DETAILS</div><div class="bank-body">' +
+        '<div class="bank-box"><div class="section-label" style="display:inline-block;background-color:#2f6db5;color:#ffffff;font-weight:700;font-size:0.9rem;padding:0.2rem 0.85rem;margin:0.65rem 0 0.35rem;">BANK DETAILS</div><div class="bank-body">' +
         "Bank Name : " +
         window.UI.escapeHtml(profile.bank_name || "") +
         "<br>Account no : " +
@@ -171,12 +181,35 @@
           "_" +
           (data.invoice.bill_number || 0) +
           ".pdf";
+        // Force color rendering in the cloned DOM used by html2canvas
         html2pdf()
           .set({
-            margin: 8,
+            margin: [8, 8, 8, 8],
             filename: name,
             image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: "#ffffff",
+              logging: false,
+              onclone: function (clonedDoc) {
+                var sheet = clonedDoc.getElementById("invoiceSheet");
+                if (!sheet) return;
+                sheet.style.webkitPrintColorAdjust = "exact";
+                sheet.style.printColorAdjust = "exact";
+                sheet.querySelectorAll(".section-label").forEach(function (node) {
+                  node.style.backgroundColor = "#2f6db5";
+                  node.style.color = "#ffffff";
+                });
+                sheet.querySelectorAll("th").forEach(function (node) {
+                  node.style.backgroundColor = "#dbe8f6";
+                  node.style.color = "#112233";
+                });
+                sheet.querySelectorAll(".letterhead h1, .letterhead .tagline, .grand").forEach(function (node) {
+                  node.style.color = "#e00000";
+                });
+              }
+            },
             jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
             pagebreak: { mode: ["css", "legacy"], avoid: [".footer-keep-together", ".bank-box", "tr"] }
           })
