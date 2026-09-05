@@ -22,7 +22,34 @@
 
     <div class="stat-grid mb-3" id="stats"></div>
 
+    <div class="dash-grid charts-grid mb-3">
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">Bill value · last 6 months</h2>
+        <div class="chart-wrap">
+          <canvas id="chartMonthly" height="220"></canvas>
+        </div>
+      </div>
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">Document mix</h2>
+        <div class="chart-wrap chart-wrap-sm">
+          <canvas id="chartMix" height="220"></canvas>
+        </div>
+      </div>
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">GST split</h2>
+        <div class="chart-wrap chart-wrap-sm">
+          <canvas id="chartGst" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+
     <div class="dash-grid mb-3">
+      <div class="card-panel mb-0">
+        <h2 class="h5 mb-3">Top clients by value</h2>
+        <div class="chart-wrap">
+          <canvas id="chartTopClients" height="220"></canvas>
+        </div>
+      </div>
       <div class="card-panel mb-0">
         <h2 class="h5 mb-3">This month</h2>
         <div id="monthBox"></div>
@@ -30,10 +57,6 @@
       <div class="card-panel mb-0">
         <h2 class="h5 mb-3">GST overview</h2>
         <div id="gstBox"></div>
-      </div>
-      <div class="card-panel mb-0">
-        <h2 class="h5 mb-3">Document mix</h2>
-        <div id="mixBox"></div>
       </div>
     </div>
 
@@ -110,6 +133,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/db.js"></script>
@@ -128,6 +152,189 @@
         value +
         "</strong></div>"
       );
+    }
+
+    var chartColors = {
+      brand: "#1a5f4a",
+      brandSoft: "rgba(26, 95, 74, 0.55)",
+      accent: "#c45c26",
+      accentSoft: "rgba(196, 92, 38, 0.55)",
+      muted: "#6b7280",
+      cgst: "#2563eb",
+      sgst: "#059669",
+      empty: "#e5e7eb"
+    };
+
+    function renderCharts(data) {
+      if (typeof Chart === "undefined") return;
+      var trend = data.monthlyTrend || [];
+      var labels = trend.map(function (m) {
+        return m.label;
+      });
+
+      new Chart(document.getElementById("chartMonthly"), {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Tax invoices",
+              data: trend.map(function (m) {
+                return m.taxValue;
+              }),
+              backgroundColor: chartColors.brandSoft,
+              borderColor: chartColors.brand,
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: "Quotations",
+              data: trend.map(function (m) {
+                return m.quotationValue;
+              }),
+              backgroundColor: chartColors.accentSoft,
+              borderColor: chartColors.accent,
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12 } }
+          },
+          scales: {
+            x: { stacked: false, grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function (v) {
+                  return "₹" + Number(v).toLocaleString("en-IN");
+                }
+              }
+            }
+          }
+        }
+      });
+
+      var qCount = data.quotationCount || 0;
+      var tCount = data.taxInvoiceCount || 0;
+      new Chart(document.getElementById("chartMix"), {
+        type: "doughnut",
+        data: {
+          labels: ["Quotations", "Tax invoices"],
+          datasets: [
+            {
+              data: qCount + tCount ? [qCount, tCount] : [1],
+              backgroundColor:
+                qCount + tCount
+                  ? [chartColors.accent, chartColors.brand]
+                  : [chartColors.empty],
+              borderWidth: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12 } },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  if (!(qCount + tCount)) return "No bills yet";
+                  return ctx.label + ": " + ctx.raw;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      var cgst = Number(data.cgstTotal || 0);
+      var sgst = Number(data.sgstTotal || 0);
+      new Chart(document.getElementById("chartGst"), {
+        type: "doughnut",
+        data: {
+          labels: ["CGST", "SGST"],
+          datasets: [
+            {
+              data: cgst + sgst ? [cgst, sgst] : [1],
+              backgroundColor:
+                cgst + sgst ? [chartColors.cgst, chartColors.sgst] : [chartColors.empty],
+              borderWidth: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12 } },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  if (!(cgst + sgst)) return "No GST yet";
+                  return (
+                    ctx.label +
+                    ": ₹" +
+                    Number(ctx.raw).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })
+                  );
+                }
+              }
+            }
+          }
+        }
+      });
+
+      var tops = (data.topClients || []).slice(0, 5);
+      new Chart(document.getElementById("chartTopClients"), {
+        type: "bar",
+        data: {
+          labels: tops.length
+            ? tops.map(function (c) {
+                var n = c.client_name || "Client";
+                return n.length > 18 ? n.slice(0, 18) + "…" : n;
+              })
+            : ["No data"],
+          datasets: [
+            {
+              label: "Bill value",
+              data: tops.length
+                ? tops.map(function (c) {
+                    return c.total;
+                  })
+                : [0],
+              backgroundColor: chartColors.brandSoft,
+              borderColor: chartColors.brand,
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: {
+                callback: function (v) {
+                  return "₹" + Number(v).toLocaleString("en-IN");
+                }
+              }
+            },
+            y: { grid: { display: false } }
+          }
+        }
+      });
     }
 
     $(async function () {
@@ -157,6 +364,8 @@
           "</div></div>"
       );
 
+      renderCharts(data);
+
       $("#monthBox").html(
         detailRow("Period", window.UI.escapeHtml(data.thisMonthLabel || "")) +
           detailRow("Bills this month", String(data.thisMonthCount || 0)) +
@@ -168,13 +377,6 @@
         detailRow("CGST (Central)", "₹" + H.formatMoney(data.cgstTotal || 0)) +
           detailRow("SGST (State)", "₹" + H.formatMoney(data.sgstTotal || 0)) +
           detailRow("Total GST (CGST+SGST)", "₹" + H.formatMoney(data.gstTotal || 0))
-      );
-
-      $("#mixBox").html(
-        detailRow("Quotations", String(data.quotationCount || 0)) +
-          detailRow("Quotation value", "₹" + H.formatMoney(data.quotationValue || 0)) +
-          detailRow("Tax invoices", String(data.taxInvoiceCount || 0)) +
-          detailRow("Tax invoice revenue", "₹" + H.formatMoney(data.revenue || 0))
       );
 
       if (!data.topClients || !data.topClients.length) {

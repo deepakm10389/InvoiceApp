@@ -202,6 +202,17 @@ a {
   gap: 0.75rem;
 }
 
+.chart-wrap {
+  position: relative;
+  height: 240px;
+  width: 100%;
+}
+
+.chart-wrap-sm {
+  max-width: 280px;
+  margin: 0 auto;
+}
+
 .dash-detail-row {
   display: flex;
   justify-content: space-between;
@@ -672,6 +683,10 @@ a {
 
   .dash-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .dash-grid.charts-grid {
+    grid-template-columns: 1.4fr 0.8fr 0.8fr;
   }
 
   .dash-grid.two-col {

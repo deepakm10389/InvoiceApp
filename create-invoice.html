@@ -152,9 +152,6 @@
             .join("")
       );
       window.UI.makeAutocompleteSelect($("#pick_item"), { placeholder: "Search item…" });
-      window.UI.makeAutocompleteSelect($("#address_id"), { placeholder: "Search address…" });
-      window.UI.makeAutocompleteSelect($("#doc_type"), { placeholder: "Document type", includeEmpty: false });
-      window.UI.makeAutocompleteSelect($("#pick_type"), { placeholder: "Type", includeEmpty: false });
 
       async function loadAddresses(clientId, selectedId) {
         addresses = clientId ? await window.DB.listAddresses(clientId) : [];
@@ -181,7 +178,6 @@
               .join("")
         );
         if (selectedId) $("#address_id").val(selectedId);
-        window.UI.makeAutocompleteSelect($("#address_id"), { placeholder: "Search address…" });
       }
 
       async function refreshNumber() {
@@ -375,7 +371,12 @@
           quantity: qty,
           rate: rate
         });
+        $("#pick_item").val("");
         $("#pick_qty").val(1);
+        $("#pick_rate").val("");
+        $("#pick_type").val("SFT");
+        var syncItem = $("#pick_item").data("ac-sync");
+        if (syncItem) syncItem();
         renderLines();
       });
 

@@ -324,6 +324,30 @@
       })
       .slice(0, 5);
 
+    var monthlyTrend = [];
+    for (var m = 5; m >= 0; m--) {
+      var d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      var key =
+        d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+      var monthRows = invoices.filter(function (i) {
+        return String(i.invoice_date || "").slice(0, 7) === key;
+      });
+      var monthQuotes = monthRows.filter(function (i) {
+        return i.doc_type === "quotation";
+      });
+      var monthTax = monthRows.filter(function (i) {
+        return i.doc_type !== "quotation";
+      });
+      monthlyTrend.push({
+        key: key,
+        label: d.toLocaleString("en-IN", { month: "short", year: "2-digit" }),
+        billCount: monthRows.length,
+        quotationValue: sumField(monthQuotes, "total"),
+        taxValue: sumField(monthTax, "total"),
+        totalValue: sumField(monthRows, "total")
+      });
+    }
+
     return {
       invoiceCount: invoices.length,
       quotationCount: quotations.length,
@@ -343,6 +367,7 @@
       thisMonthValue: sumField(thisMonth, "total"),
       thisMonthLabel: now.toLocaleString("en-IN", { month: "long", year: "numeric" }),
       topClients: topClients,
+      monthlyTrend: monthlyTrend,
       recent: invoices.slice(0, 8),
       profile: profile || null,
       clients: clients.slice(0, 5),
