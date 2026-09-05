@@ -14,7 +14,7 @@ HTML + jQuery GST quotation / tax invoice app, rebuilt from the existing .NET + 
 - Mobile-first responsive UI (hamburger menu, card lists on phones)
 - Profile / letterhead + bank details + change password
 
-## Import from the old .NET app
+## Import masters from the old .NET app
 
 Seed JSON extracted from Manage Client / Manage Item / Manage Bill is in [`scripts/seed-data/`](scripts/seed-data/).
 
