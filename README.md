@@ -16,13 +16,15 @@ HTML + jQuery GST quotation / tax invoice app, rebuilt from the existing .NET + 
 
 ## Import masters from the old .NET app
 
-Seed JSON extracted from Manage Client / Manage Item is in [`scripts/seed-data/`](scripts/seed-data/).
+Seed JSON extracted from Manage Client / Manage Item / Manage Bill is in [`scripts/seed-data/`](scripts/seed-data/).
 
 1. Sign in
-2. Open [Import masters](import-masters.html) (also in the sidebar)
-3. Click **Import into my account**
+2. Open [Import masters](import-masters.html) (also in the sidebar) and import clients/items
+3. Open [Import bills](import-bills.html) and import bill headers
 
-About **290 clients** (with Address 1) and **38 items** will be loaded. Duplicate names are skipped.
+About **290 clients**, **38 items**, and **29 bills** (headers from ManageBill) will load. Duplicate names / bill keys are skipped.
+
+> Note: the old ManageBill screen does not expose line-item detail on Edit, so each imported bill is stored as one summary line for the taxable subtotal (GST recalculated at 18%).
 
 1. Open the folder in a static file server, or simply open `login.html` via a local HTTP server.
 2. Sign in with:

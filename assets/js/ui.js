@@ -11,6 +11,7 @@
     { href: "clients.html", label: "Clients" },
     { href: "items.html", label: "Items" },
     { href: "import-masters.html", label: "Import masters" },
+    { href: "import-bills.html", label: "Import bills" },
     { href: "profile.html", label: "Profile" }
   ];
 
