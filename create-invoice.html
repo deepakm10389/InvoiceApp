@@ -80,10 +80,10 @@
             <button type="button" class="btn btn-brand w-100" id="btnAddLine">Add</button>
           </div>
         </div>
-        <div class="mt-2 p-2 border rounded bg-light" id="pickTypeOtherWrap" hidden>
-          <label class="form-label mb-1" for="pick_type_other">Custom type *</label>
-          <input class="form-control" id="pick_type_other" placeholder="e.g. NOS, Job, Sqm" maxlength="40" autocomplete="off" />
-          <div class="form-text mb-0">Required when Type is Other. Saved on the line item.</div>
+        <div class="mt-2 p-2 border rounded bg-light" id="pickItemOtherWrap" hidden>
+          <label class="form-label mb-1" for="pick_item_other">Custom item *</label>
+          <input class="form-control" id="pick_item_other" placeholder="Enter item name" maxlength="120" autocomplete="off" />
+          <div class="form-text mb-0">Shown when the item is Other. This name is saved on the line.</div>
         </div>
         <div id="linesHost"></div>
       </div>
@@ -348,33 +348,36 @@
         await refreshNumber();
       }
 
-      $("#pick_item").on("change", function () {
-        var opt = $(this).find(":selected");
-        var rate = opt.data("rate");
-        if (rate != null) $("#pick_rate").val(rate);
-      });
+      function isOtherItemName(name) {
+        return String(name || "").trim().toLowerCase() === "other";
+      }
 
-      function syncTypeOtherField() {
-        var isOther = $("#pick_type").val() === "Other";
-        if (isOther) {
-          $("#pickTypeOtherWrap").removeClass("d-none").attr("aria-hidden", "false");
+      function syncItemOtherField() {
+        var name = $("#pick_item option:selected").text();
+        var show = !!$("#pick_item").val() && isOtherItemName(name);
+        var $wrap = $("#pickItemOtherWrap");
+        if (show) {
+          $wrap.prop("hidden", false).css("display", "");
           setTimeout(function () {
-            $("#pick_type_other").trigger("focus");
+            $("#pick_item_other").trigger("focus");
           }, 0);
         } else {
-          $("#pickTypeOtherWrap").addClass("d-none").attr("aria-hidden", "true");
-          $("#pick_type_other").val("");
+          $wrap.prop("hidden", true);
+          $("#pick_item_other").val("");
         }
       }
 
-      function resolveTypeName() {
-        var typeVal = $("#pick_type").val();
-        if (typeVal !== "Other") return typeVal;
-        return String($("#pick_type_other").val() || "").trim();
+      $("#pick_item").on("change", function () {
+        var opt = $(this).find(":selected");
+        var rate = opt.data("rate");
+        if (rate != null && rate !== "") $("#pick_rate").val(rate);
+        syncItemOtherField();
+      });
+      var $itemSearch = $("#pick_item").data("ac-input");
+      if ($itemSearch && $itemSearch.length) {
+        $itemSearch.on("input", syncItemOtherField);
       }
-
-      $("#pick_type").on("change input", syncTypeOtherField);
-      syncTypeOtherField();
+      syncItemOtherField();
 
       $("#btnAddLine").on("click", function () {
         var itemId = $("#pick_item").val();
@@ -383,15 +386,18 @@
         });
         var qty = Number($("#pick_qty").val());
         var rate = Number($("#pick_rate").val());
-        var typeName = resolveTypeName();
         if (!item) {
           window.UI.toast("Select an item", "error");
           return;
         }
-        if ($("#pick_type").val() === "Other" && !typeName) {
-          window.UI.toast("Enter a custom type", "error");
-          $("#pick_type_other").trigger("focus");
-          return;
+        var itemName = item.item_name;
+        if (isOtherItemName(item.item_name)) {
+          itemName = String($("#pick_item_other").val() || "").trim();
+          if (!itemName) {
+            window.UI.toast("Enter a custom item name", "error");
+            $("#pick_item_other").trigger("focus");
+            return;
+          }
         }
         if (!(qty > 0) || !(rate >= 0)) {
           window.UI.toast("Enter valid quantity and rate", "error");
@@ -399,8 +405,8 @@
         }
         lines.push({
           item_id: item.id,
-          item_name: item.item_name,
-          type_name: typeName,
+          item_name: itemName,
+          type_name: $("#pick_type").val(),
           quantity: qty,
           rate: rate
         });
@@ -408,8 +414,8 @@
         $("#pick_qty").val(1);
         $("#pick_rate").val("");
         $("#pick_type").val("SFT");
-        $("#pick_type_other").val("");
-        syncTypeOtherField();
+        $("#pick_item_other").val("");
+        syncItemOtherField();
         var syncItem = $("#pick_item").data("ac-sync");
         if (syncItem) syncItem();
         renderLines();
