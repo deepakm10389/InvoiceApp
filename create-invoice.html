@@ -79,11 +79,11 @@
           <div class="col-6 col-md-2">
             <button type="button" class="btn btn-brand w-100" id="btnAddLine">Add</button>
           </div>
-          <div class="col-12 d-none" id="pickTypeOtherWrap">
-            <label class="form-label" for="pick_type_other">Custom type *</label>
-            <input class="form-control" id="pick_type_other" placeholder="e.g. NOS, Job, Sqm" maxlength="40" autocomplete="off" />
-            <div class="form-text">Shown when Type is Other. This value is saved on the line item.</div>
-          </div>
+        </div>
+        <div class="mt-2 p-2 border rounded bg-light" id="pickTypeOtherWrap" hidden>
+          <label class="form-label mb-1" for="pick_type_other">Custom type *</label>
+          <input class="form-control" id="pick_type_other" placeholder="e.g. NOS, Job, Sqm" maxlength="40" autocomplete="off" />
+          <div class="form-text mb-0">Required when Type is Other. Saved on the line item.</div>
         </div>
         <div id="linesHost"></div>
       </div>
