@@ -68,10 +68,6 @@
               <option value="Other">Other</option>
             </select>
           </div>
-          <div class="col-6 col-md-2 d-none" id="pickTypeOtherWrap">
-            <label class="form-label">Custom type</label>
-            <input class="form-control" id="pick_type_other" placeholder="Enter type" maxlength="40" />
-          </div>
           <div class="col-6 col-md-2">
             <label class="form-label">Qty</label>
             <input class="form-control" type="number" inputmode="decimal" step="0.01" min="0" id="pick_qty" value="1" />
@@ -82,6 +78,11 @@
           </div>
           <div class="col-6 col-md-2">
             <button type="button" class="btn btn-brand w-100" id="btnAddLine">Add</button>
+          </div>
+          <div class="col-12 d-none" id="pickTypeOtherWrap">
+            <label class="form-label" for="pick_type_other">Custom type *</label>
+            <input class="form-control" id="pick_type_other" placeholder="e.g. NOS, Job, Sqm" maxlength="40" autocomplete="off" />
+            <div class="form-text">Shown when Type is Other. This value is saved on the line item.</div>
           </div>
         </div>
         <div id="linesHost"></div>
@@ -355,11 +356,14 @@
 
       function syncTypeOtherField() {
         var isOther = $("#pick_type").val() === "Other";
-        $("#pickTypeOtherWrap").toggleClass("d-none", !isOther);
-        if (!isOther) {
-          $("#pick_type_other").val("");
+        if (isOther) {
+          $("#pickTypeOtherWrap").removeClass("d-none").attr("aria-hidden", "false");
+          setTimeout(function () {
+            $("#pick_type_other").trigger("focus");
+          }, 0);
         } else {
-          $("#pick_type_other").trigger("focus");
+          $("#pickTypeOtherWrap").addClass("d-none").attr("aria-hidden", "true");
+          $("#pick_type_other").val("");
         }
       }
 
@@ -369,7 +373,7 @@
         return String($("#pick_type_other").val() || "").trim();
       }
 
-      $("#pick_type").on("change", syncTypeOtherField);
+      $("#pick_type").on("change input", syncTypeOtherField);
       syncTypeOtherField();
 
       $("#btnAddLine").on("click", function () {
