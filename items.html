@@ -30,7 +30,7 @@
         <table class="table table-hover align-middle mb-0">
           <thead id="sortHeaders">
             <tr>
-              <th>#</th>
+              <th data-sort="sort_no">#</th>
               <th data-sort="item_name">Item</th>
               <th data-sort="rate">Rate</th>
               <th data-sort="description">Description</th>
@@ -95,14 +95,16 @@
           return;
         }
         $("#gridBody").html(rows.map(function (i, idx) {
-          return '<tr><td>' + (idx + 1) + '</td><td><strong>' + window.UI.escapeHtml(i.item_name) + '</strong></td><td>₹' +
+          var sno = Number(i.sort_no) || idx + 1;
+          return '<tr><td>' + sno + '</td><td><strong>' + window.UI.escapeHtml(i.item_name) + '</strong></td><td>₹' +
             H.formatMoney(i.rate) + '</td><td>' + window.UI.escapeHtml(i.description || "—") +
             '</td><td class="text-nowrap"><button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + i.id +
             '">Edit</button> <button class="btn btn-sm btn-outline-danger btn-del" data-id="' + i.id +
             '">Delete</button></td></tr>';
         }).join(""));
         $("#gridCards").html(rows.map(function (i, idx) {
-          return '<div class="data-card"><div class="title">#' + (idx + 1) + ' · ' + window.UI.escapeHtml(i.item_name) +
+          var sno = Number(i.sort_no) || idx + 1;
+          return '<div class="data-card"><div class="title">#' + sno + ' · ' + window.UI.escapeHtml(i.item_name) +
             '</div><div class="meta">Rate: ₹' + H.formatMoney(i.rate) +
             '</div><div class="meta">' + window.UI.escapeHtml(i.description || "") +
             '</div><div class="actions"><button class="btn btn-sm btn-outline-brand btn-edit" data-id="' + i.id +
@@ -113,7 +115,7 @@
 
       var grid = window.UI.createGridController({
         rows: [],
-        sortKey: "item_name",
+        sortKey: "sort_no",
         metaSelector: "#filterMeta",
         render: render
       });

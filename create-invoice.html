@@ -284,7 +284,9 @@
           lines
             .map(function (li, idx) {
               return (
-                '<div class="line-item-card"><div class="d-flex justify-content-between gap-2"><strong>' +
+                '<div class="line-item-card"><div class="d-flex justify-content-between gap-2"><strong>#' +
+                (idx + 1) +
+                " · " +
                 window.UI.escapeHtml(li.item_name) +
                 '</strong><button type="button" class="btn btn-sm btn-outline-danger btn-remove" data-idx="' +
                 idx +

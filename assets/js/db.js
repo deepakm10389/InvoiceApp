@@ -592,14 +592,25 @@
     async listItems() {
       var session = getSession();
       var store = loadStore();
-      return store.items
-        .filter(function (i) {
-          return i.user_id === session.user.id;
-        })
-        .slice()
-        .sort(function (a, b) {
-          return a.item_name.localeCompare(b.item_name);
-        });
+      var list = store.items.filter(function (i) {
+        return i.user_id === session.user.id;
+      });
+      var changed = false;
+      var maxNo = 0;
+      list.forEach(function (it) {
+        if (Number(it.sort_no) > maxNo) maxNo = Number(it.sort_no);
+      });
+      list.forEach(function (it) {
+        if (!Number(it.sort_no)) {
+          maxNo += 1;
+          it.sort_no = maxNo;
+          changed = true;
+        }
+      });
+      if (changed) saveStore(store);
+      return list.slice().sort(function (a, b) {
+        return Number(a.sort_no) - Number(b.sort_no);
+      });
     },
     async saveItem(item) {
       var session = getSession();
@@ -609,13 +620,24 @@
           return i.id === item.id && i.user_id === session.user.id;
         });
         if (idx < 0) throw new Error("Item not found");
+        var keepNo = store.items[idx].sort_no;
         store.items[idx] = Object.assign({}, store.items[idx], item, {
-          user_id: session.user.id
+          user_id: session.user.id,
+          sort_no: item.sort_no || keepNo
         });
         saveStore(store);
         return store.items[idx];
       }
-      var row = Object.assign({}, item, { id: uid(), user_id: session.user.id });
+      var maxNo = 0;
+      store.items.forEach(function (it) {
+        if (it.user_id === session.user.id && Number(it.sort_no) > maxNo) maxNo = Number(it.sort_no);
+      });
+      var row = Object.assign({}, item, {
+        id: uid(),
+        user_id: session.user.id,
+        sort_no: maxNo + 1,
+        created_at: new Date().toISOString()
+      });
       store.items.push(row);
       saveStore(store);
       return row;
@@ -672,9 +694,13 @@
       var address = store.client_addresses.find(function (a) {
         return a.id === inv.address_id;
       });
-      var items = store.invoice_items.filter(function (li) {
-        return li.invoice_id === inv.id;
-      });
+      var items = store.invoice_items
+        .filter(function (li) {
+          return li.invoice_id === inv.id;
+        })
+        .sort(function (a, b) {
+          return (Number(a.line_no) || 0) - (Number(b.line_no) || 0);
+        });
       var profile = store.profiles.find(function (p) {
         return p.id === session.user.id;
       });
@@ -801,10 +827,11 @@
         store.invoices.push(invoice);
       }
 
-      payload.items.forEach(function (li) {
+      payload.items.forEach(function (li, lineIdx) {
         store.invoice_items.push({
           id: uid(),
           invoice_id: invoiceId,
+          line_no: lineIdx + 1,
           item_id: li.item_id || null,
           item_name: li.item_name,
           type_name: li.type_name || "SFT",
@@ -954,12 +981,25 @@
       async saveClient(clientRow) {
         var user = await requireUser();
         var row = Object.assign({}, clientRow, { user_id: user.id });
+        var isNew = !row.id;
+        var addressText = isNew ? String(row.address || "").trim() : "";
         delete row.addresses;
         delete row.address_count;
         delete row.client_addresses;
+        if (!isNew) delete row.address;
         if (!row.id) delete row.id;
         var res = await client.from("clients").upsert(row).select().single();
         if (res.error) throw new Error(res.error.message);
+        if (addressText) {
+          var addrRes = await client.from("client_addresses").insert({
+            user_id: user.id,
+            client_id: res.data.id,
+            label: "Address 1",
+            address: addressText,
+            state_code: row.state_code || ""
+          });
+          if (addrRes.error) throw new Error(addrRes.error.message);
+        }
         return res.data;
       },
       async deleteClient(id) {
@@ -970,15 +1010,47 @@
       },
       async listItems() {
         await requireUser();
-        var res = await client.from("items").select("*").order("item_name");
+        var res = await client.from("items").select("*").order("created_at", { ascending: true });
         if (res.error) throw new Error(res.error.message);
-        return res.data || [];
+        var rows = res.data || [];
+        var missing = rows.some(function (it) {
+          return !Number(it.sort_no);
+        });
+        if (missing && rows.length && Object.prototype.hasOwnProperty.call(rows[0], "sort_no")) {
+          for (var i = 0; i < rows.length; i++) {
+            if (Number(rows[i].sort_no)) continue;
+            var upd = await client.from("items").update({ sort_no: i + 1 }).eq("id", rows[i].id);
+            if (upd.error) break;
+            rows[i].sort_no = i + 1;
+          }
+        }
+        rows.sort(function (a, b) {
+          var as = Number(a.sort_no) || 0;
+          var bs = Number(b.sort_no) || 0;
+          if (as && bs && as !== bs) return as - bs;
+          return String(a.created_at || "").localeCompare(String(b.created_at || ""));
+        });
+        return rows;
       },
       async saveItem(item) {
         var user = await requireUser();
         var row = Object.assign({}, item, { user_id: user.id });
-        if (!row.id) delete row.id;
+        if (!row.id) {
+          delete row.id;
+          var existing = await this.listItems();
+          var maxNo = 0;
+          existing.forEach(function (it) {
+            if (Number(it.sort_no) > maxNo) maxNo = Number(it.sort_no);
+          });
+          row.sort_no = maxNo + 1;
+        } else {
+          delete row.sort_no;
+        }
         var res = await client.from("items").upsert(row).select().single();
+        if (res.error && /sort_no/i.test(res.error.message || "")) {
+          delete row.sort_no;
+          res = await client.from("items").upsert(row).select().single();
+        }
         if (res.error) throw new Error(res.error.message);
         return res.data;
       },
@@ -1040,8 +1112,14 @@
         var itemsRes = await client
           .from("invoice_items")
           .select("*")
-          .eq("invoice_id", id)
-          .order("id");
+          .eq("invoice_id", id);
+        if (itemsRes.error) throw new Error(itemsRes.error.message);
+        (itemsRes.data || []).sort(function (a, b) {
+          var an = Number(a.line_no) || 0;
+          var bn = Number(b.line_no) || 0;
+          if (an && bn && an !== bn) return an - bn;
+          return String(a.id || "").localeCompare(String(b.id || ""));
+        });
         var profile = await this.getProfile();
         return {
           invoice: invRes.data,
@@ -1166,9 +1244,10 @@
         if (payload.id) {
           await client.from("invoice_items").delete().eq("invoice_id", invoiceId);
         }
-        var lines = payload.items.map(function (li) {
+        var lines = payload.items.map(function (li, lineIdx) {
           return {
             invoice_id: invoiceId,
+            line_no: lineIdx + 1,
             item_id: li.item_id || null,
             item_name: li.item_name,
             type_name: li.type_name || "SFT",
@@ -1178,6 +1257,12 @@
           };
         });
         var liRes = await client.from("invoice_items").insert(lines);
+        if (liRes.error && /line_no/i.test(liRes.error.message || "")) {
+          lines.forEach(function (li) {
+            delete li.line_no;
+          });
+          liRes = await client.from("invoice_items").insert(lines);
+        }
         if (liRes.error) throw new Error(liRes.error.message);
         return invRes.data;
       },

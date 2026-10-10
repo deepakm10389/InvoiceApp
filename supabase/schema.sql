@@ -54,6 +54,7 @@ create table if not exists public.items (
   item_name text not null,
   rate numeric(14,2) not null default 0,
   description text default '',
+  sort_no integer,
   created_at timestamptz default now()
 );
 
@@ -80,11 +81,14 @@ create table if not exists public.invoices (
 
 -- For existing databases created before address_id existed:
 alter table public.invoices add column if not exists address_id uuid null references public.client_addresses(id) on delete set null;
+alter table public.items add column if not exists sort_no integer;
+alter table public.invoice_items add column if not exists line_no integer;
 
 create table if not exists public.invoice_items (
   id uuid primary key default gen_random_uuid(),
   invoice_id uuid not null references public.invoices(id) on delete cascade,
   item_id uuid null references public.items(id) on delete set null,
+  line_no integer,
   item_name text not null,
   type_name text not null default 'SFT',
   quantity numeric(14,2) not null default 0,
